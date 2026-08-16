@@ -1,0 +1,178 @@
+import { describe, expect, it } from 'vitest';
+import { computeBalance, planBalancedSeating, type SeatedPaddler } from './balance';
+import { DEFAULT_CLUB_SETTINGS } from './rules.config';
+import { makeSeated } from './testing';
+import type { BoatSize, SeatPosition } from './types';
+
+const settings = DEFAULT_CLUB_SETTINGS;
+
+const applyPlan = (seated: SeatedPaddler[], boatSize: BoatSize): SeatedPaddler[] => {
+  const plan = new Map(planBalancedSeating(seated, boatSize).map((p) => [p.assignmentId, p.seat]));
+  return seated.map((p) => {
+    const seat = plan.get(p.assignment.id);
+    return seat ? { ...p, assignment: { ...p.assignment, seat } } : p;
+  });
+};
+
+describe('computeBalance', () => {
+  it('reports an even boat as balanced', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 80 }),
+      makeSeated({ row: 1, side: 'right' }, { weightKg: 80 }),
+      makeSeated({ row: 5, side: 'left' }, { weightKg: 70 }),
+      makeSeated({ row: 5, side: 'right' }, { weightKg: 70 }),
+    ];
+    const report = computeBalance(seated, 20, settings);
+
+    expect(report.leftKg).toBe(150);
+    expect(report.rightKg).toBe(150);
+    expect(report.sideDeltaKg).toBe(0);
+    expect(report.sideWithinTolerance).toBe(true);
+    expect(report.totalKg).toBe(300);
+    expect(report.seatedCount).toBe(4);
+  });
+
+  it('flags a boat that sits down on one side', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 100 }),
+      makeSeated({ row: 1, side: 'right' }, { weightKg: 50 }),
+    ];
+    const report = computeBalance(seated, 20, settings);
+
+    expect(report.sideDeltaKg).toBe(50);
+    expect(report.sideDeltaFraction).toBeCloseTo(50 / 150);
+    expect(report.sideWithinTolerance).toBe(false);
+  });
+
+  it('splits bow and stern at the midpoint of the boat', () => {
+    // A 20s boat has 10 rows, so rows 1-5 are the bow half.
+    const seated = [
+      makeSeated({ row: 5, side: 'left' }, { weightKg: 90 }),
+      makeSeated({ row: 6, side: 'right' }, { weightKg: 60 }),
+    ];
+    const report = computeBalance(seated, 20, settings);
+
+    expect(report.bowKg).toBe(90);
+    expect(report.sternKg).toBe(60);
+    expect(report.bowSternDeltaKg).toBe(30);
+    expect(report.bowSternWithinTolerance).toBe(false);
+  });
+
+  it('counts paddlers with no weight instead of guessing one', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 80 }),
+      makeSeated({ row: 1, side: 'right' }, {}),
+    ];
+    const report = computeBalance(seated, 20, settings);
+
+    expect(report.missingWeightCount).toBe(1);
+    expect(report.totalKg).toBe(80);
+  });
+
+  it('counts paddlers seated against their side preference', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { sidePreference: 'right', weightKg: 80 }),
+      makeSeated({ row: 1, side: 'right' }, { sidePreference: 'right', weightKg: 80 }),
+      makeSeated({ row: 2, side: 'left' }, { sidePreference: 'both', weightKg: 80 }),
+    ];
+    expect(computeBalance(seated, 20, settings).sidePreferenceViolations).toBe(1);
+  });
+});
+
+describe('planBalancedSeating', () => {
+  it('evens out the sides using paddlers who can sit either side', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 100, sidePreference: 'both' }),
+      makeSeated({ row: 2, side: 'left' }, { weightKg: 95, sidePreference: 'both' }),
+      makeSeated({ row: 3, side: 'left' }, { weightKg: 60, sidePreference: 'both' }),
+      makeSeated({ row: 4, side: 'left' }, { weightKg: 55, sidePreference: 'both' }),
+    ];
+    expect(computeBalance(seated, 20, settings).sideDeltaKg).toBe(310);
+
+    const after = computeBalance(applyPlan(seated, 20), 20, settings);
+    expect(Math.abs(after.sideDeltaKg)).toBeLessThanOrEqual(10);
+    expect(after.totalKg).toBe(310);
+  });
+
+  it('keeps paddlers on the side they actually paddle', () => {
+    const seated = [
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 100, sidePreference: 'left' }),
+      makeSeated({ row: 2, side: 'left' }, { weightKg: 90, sidePreference: 'left' }),
+      makeSeated({ row: 3, side: 'right' }, { weightKg: 70, sidePreference: 'right' }),
+      makeSeated({ row: 4, side: 'right' }, { weightKg: 60, sidePreference: 'both' }),
+    ];
+    const after = applyPlan(seated, 20);
+
+    for (const p of after) {
+      if (p.member.sidePreference !== 'both') {
+        expect(p.assignment.seat.side).toBe(p.member.sidePreference);
+      }
+    }
+  });
+
+  it('never moves a pinned paddler', () => {
+    const pinnedSeat: SeatPosition = { row: 1, side: 'left' };
+    const seated = [
+      makeSeated(pinnedSeat, { weightKg: 100, sidePreference: 'both' }, { pinned: true }),
+      makeSeated({ row: 2, side: 'left' }, { weightKg: 95, sidePreference: 'both' }),
+      makeSeated({ row: 3, side: 'left' }, { weightKg: 90, sidePreference: 'both' }),
+      makeSeated({ row: 4, side: 'left' }, { weightKg: 85, sidePreference: 'both' }),
+    ];
+    const pinnedId = seated[0].assignment.id;
+
+    const plan = planBalancedSeating(seated, 20);
+    expect(plan.find((p) => p.assignmentId === pinnedId)).toBeUndefined();
+
+    const after = applyPlan(seated, 20);
+    const stillPinned = after.find((p) => p.assignment.id === pinnedId)!;
+    expect(stillPinned.assignment.seat).toEqual(pinnedSeat);
+  });
+
+  it('does not overfill a side when pinned paddlers use up its seats', () => {
+    // A 10s boat has 5 rows per side. Pin all 5 left seats, then the movable
+    // "left-preference" paddlers have nowhere to go but the right.
+    const seated = [
+      ...[1, 2, 3, 4, 5].map((row) =>
+        makeSeated({ row, side: 'left' }, { weightKg: 80, sidePreference: 'left' }, { pinned: true }),
+      ),
+      makeSeated({ row: 1, side: 'right' }, { weightKg: 70, sidePreference: 'left' }),
+      makeSeated({ row: 2, side: 'right' }, { weightKg: 65, sidePreference: 'left' }),
+    ];
+    const after = applyPlan(seated, 10);
+
+    const leftCount = after.filter((p) => p.assignment.seat.side === 'left').length;
+    const rightCount = after.filter((p) => p.assignment.seat.side === 'right').length;
+    expect(leftCount).toBe(5);
+    expect(rightCount).toBe(2);
+  });
+
+  it('gives every paddler a distinct seat', () => {
+    const seated = Array.from({ length: 20 }, (_, i) =>
+      makeSeated(
+        { row: (i % 10) + 1, side: i < 10 ? 'left' : 'right' },
+        { weightKg: 60 + i, sidePreference: 'both' },
+      ),
+    );
+    const after = applyPlan(seated, 20);
+
+    const keys = after.map((p) => `${p.assignment.seat.row}-${p.assignment.seat.side}`);
+    expect(new Set(keys).size).toBe(20);
+  });
+
+  it('draws the heaviest paddlers toward the engine room', () => {
+    const seated = Array.from({ length: 20 }, (_, i) =>
+      makeSeated(
+        { row: (i % 10) + 1, side: i < 10 ? 'left' : 'right' },
+        { weightKg: 50 + i * 3, sidePreference: 'both' },
+      ),
+    );
+    const after = applyPlan(seated, 20);
+    const heaviest = after.reduce((a, b) =>
+      (a.member.weightKg ?? 0) > (b.member.weightKg ?? 0) ? a : b,
+    );
+
+    // Rows 3-8 are the engine room in a 20s boat.
+    expect(heaviest.assignment.seat.row).toBeGreaterThanOrEqual(3);
+    expect(heaviest.assignment.seat.row).toBeLessThanOrEqual(8);
+  });
+});
