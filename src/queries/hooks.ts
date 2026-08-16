@@ -13,6 +13,7 @@ import {
   duplicateCrew,
 } from '@/data/operations';
 import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
+import type { SeatingChange } from '@/domain/seating';
 import type {
   Assignment,
   Availability,
@@ -75,6 +76,9 @@ export const useCrews = (categoryId: string | undefined) =>
     queryFn: () => adapter.crews.list({ categoryId }),
     enabled: Boolean(categoryId),
   });
+
+export const useAllCrews = () =>
+  useQuery({ queryKey: keys.crews.all, queryFn: () => adapter.crews.list() });
 
 export const useCrew = (id: string | undefined) =>
   useQuery({
@@ -273,6 +277,25 @@ export const useBulkUpdateAssignments = () =>
   useInvalidatingMutation(
     (patches: { id: string; patch: Partial<Omit<Assignment, 'id'>> }[]) =>
       adapter.assignments.bulkUpdate(patches),
+    [keys.assignments.all],
+  );
+
+/** Applies a set of seating changes as one write, then one refetch. */
+export const useApplySeatingChanges = () =>
+  useInvalidatingMutation(async (changes: SeatingChange[]) => {
+    for (const change of changes) {
+      if (change.op === 'create') await adapter.assignments.create(change.assignment);
+      else if (change.op === 'update')
+        await adapter.assignments.update(change.id, change.patch);
+      else await adapter.assignments.remove(change.id);
+    }
+  }, [keys.assignments.all]);
+
+/** Restores a crew's lineup verbatim — how undo and redo are applied. */
+export const useReplaceCrewLineup = () =>
+  useInvalidatingMutation(
+    ({ crewId, assignments }: { crewId: string; assignments: Assignment[] }) =>
+      adapter.assignments.replaceForCrew(crewId, assignments),
     [keys.assignments.all],
   );
 

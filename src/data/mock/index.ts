@@ -2,6 +2,7 @@ import type { Availability, ClubSettings, Profile, Snapshot } from '@/domain/typ
 import { newId } from '@/utils/ids';
 import type {
   AdminRepo,
+  AssignmentRepo,
   AuthGateway,
   AvailabilityRepo,
   DataAdapter,
@@ -93,6 +94,20 @@ function makeRepo<K extends EntityKey>(key: K): Repo<Snapshot[K][number]> {
     },
   };
 }
+
+const assignmentRepo: AssignmentRepo = {
+  ...makeRepo('assignments'),
+
+  async replaceForCrew(crewId, assignments) {
+    return mutateDb((db) => ({
+      db: {
+        ...db,
+        assignments: [...db.assignments.filter((a) => a.crewId !== crewId), ...assignments],
+      },
+      result: assignments,
+    }));
+  },
+};
 
 const availabilityRepo: AvailabilityRepo = {
   async listByEvent(eventId) {
@@ -199,7 +214,7 @@ export const mockAdapter: DataAdapter = {
   events: makeRepo('events'),
   categories: makeRepo('categories'),
   crews: makeRepo('crews'),
-  assignments: makeRepo('assignments'),
+  assignments: assignmentRepo,
   raceEntries: makeRepo('raceEntries'),
   availability: availabilityRepo,
   settings: settingsRepo,

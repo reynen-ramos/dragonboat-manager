@@ -32,6 +32,17 @@ export interface Repo<T extends { id: string }> {
   bulkUpdate(patches: { id: string; patch: Partial<Omit<T, 'id'>> }[]): Promise<T[]>;
 }
 
+export interface AssignmentRepo extends Repo<Assignment> {
+  /**
+   * Replaces a crew's entire lineup with the rows given, ids included.
+   *
+   * Undo needs to restore a previous lineup exactly — same assignment ids, so
+   * that a subsequent redo and any in-flight references still line up. Creating
+   * fresh rows would break that identity.
+   */
+  replaceForCrew(crewId: string, assignments: Assignment[]): Promise<Assignment[]>;
+}
+
 /** Availability is keyed by (eventId, memberId) rather than an id of its own. */
 export interface AvailabilityRepo {
   listByEvent(eventId: string): Promise<Availability[]>;
@@ -79,7 +90,7 @@ export interface DataAdapter {
   events: Repo<ClubEvent>;
   categories: Repo<Category>;
   crews: Repo<Crew>;
-  assignments: Repo<Assignment>;
+  assignments: AssignmentRepo;
   raceEntries: Repo<RaceEntry>;
   availability: AvailabilityRepo;
   settings: SettingsRepo;

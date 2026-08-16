@@ -202,13 +202,13 @@ describe('gender class', () => {
 });
 
 describe('cross-crew and availability checks', () => {
-  it('errors when a paddler is also racing in another crew at the event', () => {
+  it('errors when a paddler is also racing in another crew in the same category', () => {
     const { assignments, members } = fullCrew(20);
     const issues = run({
       category: category(20, 'open'),
       assignments,
       members,
-      eventAssignments: [{ crewId: 'crew-2', memberId: 'p3' }],
+      categoryAssignments: [{ crewId: 'crew-2', memberId: 'p3' }],
     });
 
     const issue = issues.find((i) => i.code === 'DOUBLE_BOOKED');
@@ -222,7 +222,7 @@ describe('cross-crew and availability checks', () => {
       category: category(20, 'open'),
       assignments,
       members,
-      eventAssignments: assignments.map((a) => ({ crewId: a.crewId, memberId: a.memberId })),
+      categoryAssignments: assignments.map((a) => ({ crewId: a.crewId, memberId: a.memberId })),
     });
 
     expect(codes(issues)).not.toContain('DOUBLE_BOOKED');

@@ -1,0 +1,37 @@
+First name,Last name,Gender,Date of birth,Weight,Side,Drummer,Cox,Status,Email,Phone,Emergency contact,Emergency phone,Notes
+Maria,Santos,F,1996-03-14,58,left,no,no,active,maria.santos@example.com,0917-555-0101,Ana Santos,0917-555-0102,
+Jasmine,Reyes,F,1994-11-02,61,right,no,no,active,,,,,
+Aileen,Cruz,F,1999-07-21,55,both,no,no,active,,,,,Strong finisher
+Grace,Villanueva,F,1991-01-30,64,left,no,no,active,,,,,
+Chloe,Tan,F,2001-05-09,57,right,no,no,active,,,,,
+Divina,Ramos,F,1988-09-17,60,both,no,no,active,,,,,
+Karla,Mendoza,F,1993-12-05,66,left,no,no,active,,,,,
+Bea,Aquino,F,2003-02-28,53,right,no,no,active,,,,,Junior squad
+Nadine,Lim,F,1997-06-11,59,both,no,no,active,,,,,
+Patricia,Gonzales,F,1990-08-23,62,left,no,no,active,,,,,
+Sofia,Del Rosario,F,2000-10-14,56,right,no,no,active,,,,,
+Angela,Bautista,F,1985-04-07,63,both,no,yes,active,,,,,Experienced steersperson
+Rhea,Navarro,F,1998-11-19,54,left,yes,no,active,,,,,
+Camille,Ocampo,F,1995-03-03,58,right,no,no,active,,,,,
+Trisha,Salazar,F,1992-07-26,60,both,no,no,active,,,,,
+Miguel,Dela Cruz,M,1993-02-18,82,left,no,no,active,,,,,
+Paolo,Garcia,M,1990-05-24,88,right,no,no,active,,,,,
+Rafael,Torres,M,1989-09-12,91,both,no,no,active,,,,,"Prefers the engine room, rows 4-7"
+Enzo,Fernandez,M,1997-01-08,79,left,no,no,active,,,,,
+Marco,Rivera,M,1994-04-15,85,right,no,no,active,,,,,
+Diego,Castillo,M,1991-10-30,94,both,no,no,active,,,,,
+Luis,Morales,M,1999-12-01,77,left,no,no,active,,,,,
+Javier,Pascual,M,1992-08-09,86,right,no,no,active,,,,,
+Andres,Domingo,M,1987-06-22,90,both,no,no,active,,,,,
+Gabriel,Herrera,M,1996-11-13,81,left,no,no,active,,,,,
+Nico,Valdez,M,1998-03-27,83,right,no,no,active,,,,,
+Emilio,Ilagan,M,1986-07-04,96,both,no,no,active,,,,,
+Tomas,Bacani,M,2002-01-16,75,left,no,no,active,,,,,
+Vincent,Alonzo,M,1993-09-29,89,right,no,no,active,,,,,
+Rueben,Sarmiento,M,1984-05-06,92,both,no,yes,active,,,,,Head coach
+Joaquin,Peralta,M,2000-02-11,78,left,no,no,active,,,,,
+Ramon,Estrada,M,1995-10-20,87,right,yes,no,active,,,,,
+Alex,Quinto,Other,1998-08-08,72,both,no,no,active,,,,,
+Sam,Corpuz,Other,2001-04-02,68,left,no,no,active,,,,,
+Iñigo,Barrera,M,1994-12-15,84,right,no,no,active,,,,,
+Lorraine,Yap,F,1996-06-30,57,both,no,no,inactive,,,,,On maternity leave

@@ -34,8 +34,14 @@ export interface ValidationInput {
   /** Roster lookup for everyone referenced by `assignments`. */
   members: Map<string, Member>;
   settings: ClubSettings;
-  /** Every assignment in the same event, used to spot double-booked paddlers. */
-  eventAssignments?: Pick<Assignment, 'crewId' | 'memberId'>[];
+  /**
+   * Assignments in the *other crews of this same category*.
+   *
+   * Scoped to the category rather than the event on purpose: a paddler racing
+   * both the Mixed and the Women's category at one regatta is entirely normal.
+   * Two crews within one category race each other, so that is the real clash.
+   */
+  categoryAssignments?: Pick<Assignment, 'crewId' | 'memberId'>[];
   /** Availability for this event, keyed by member id. */
   availability?: Map<string, AvailabilityStatus>;
   /** Event date, needed for age-division checks. */
@@ -145,24 +151,25 @@ export function validateCrew(input: ValidationInput): Issue[] {
     }
   }
 
-  // --- Double booking within the event -------------------------------------
-  if (input.eventAssignments) {
+  // --- Double booking within the category -----------------------------------
+  if (input.categoryAssignments) {
     const crewIds = new Set(assignments.map((a) => a.crewId));
     const seatedHere = new Set(
       assignments.filter((a) => a.role !== 'reserve').map((a) => a.memberId),
     );
-    const elsewhere = new Map<string, number>();
-    for (const ea of input.eventAssignments) {
-      if (crewIds.has(ea.crewId)) continue;
-      if (!seatedHere.has(ea.memberId)) continue;
-      elsewhere.set(ea.memberId, (elsewhere.get(ea.memberId) ?? 0) + 1);
+    const clashing = new Set<string>();
+    for (const other of input.categoryAssignments) {
+      if (crewIds.has(other.crewId)) continue;
+      if (seatedHere.has(other.memberId)) clashing.add(other.memberId);
     }
-    for (const memberId of elsewhere.keys()) {
+    for (const memberId of clashing) {
       const member = members.get(memberId);
       issues.push({
         level: 'error',
         code: 'DOUBLE_BOOKED',
-        message: `${member ? fullName(member) : 'A paddler'} is also in another crew at this event.`,
+        message: `${
+          member ? fullName(member) : 'A paddler'
+        } is in another crew in this same category.`,
         memberId,
       });
     }
