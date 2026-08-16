@@ -141,6 +141,23 @@ export interface Profile {
   memberId?: string;
 }
 
+/**
+ * The whole database in one object — used for JSON backup, restore, demo
+ * seeding, and as the migration path off local-only storage.
+ */
+export interface Snapshot {
+  version: number;
+  exportedAt: string;
+  members: Member[];
+  events: ClubEvent[];
+  categories: Category[];
+  crews: Crew[];
+  assignments: Assignment[];
+  availability: Availability[];
+  raceEntries: RaceEntry[];
+  settings: ClubSettings;
+}
+
 /** Club-wide tunables that differ between federations and regattas. */
 export interface ClubSettings {
   /** Minimum women among paddlers in a mixed crew, per boat size. */
