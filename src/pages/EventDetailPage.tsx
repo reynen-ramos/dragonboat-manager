@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Trophy,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -74,6 +75,13 @@ export function EventDetailPage() {
                 <ClipboardCheck /> Availability
               </Link>
             </Button>
+            {event.data.type === 'race' && (
+              <Button asChild>
+                <Link to={`/events/${event.data.id}/racing`}>
+                  <Trophy /> Race day
+                </Link>
+              </Button>
+            )}
             <Button onClick={() => setEditing(true)}>
               <Pencil /> Edit
             </Button>

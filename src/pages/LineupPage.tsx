@@ -42,6 +42,7 @@ import {
   useReplaceCrewLineup,
   useUpdateAssignment,
 } from '@/queries/hooks';
+import { CrewResults } from '@/pages/RaceDayPage';
 import { useLineupHistory } from '@/stores/lineupHistory';
 import { categoryName } from '@/utils/format';
 
@@ -247,6 +248,7 @@ export function LineupPage() {
         />
       )}
       <IssuesPanel issues={issues} />
+      {crewId && <CrewResults crewId={crewId} />}
     </div>
   );
 

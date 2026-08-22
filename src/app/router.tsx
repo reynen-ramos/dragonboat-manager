@@ -8,6 +8,7 @@ import { LineupPage } from '@/pages/LineupPage';
 import { MemberDetailPage } from '@/pages/MemberDetailPage';
 import { MembersPage } from '@/pages/MembersPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { RaceDayPage } from '@/pages/RaceDayPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 
 export const router = createBrowserRouter([
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
       { path: 'events/:eventId/availability', element: <AvailabilityPage /> },
+      { path: 'events/:eventId/racing', element: <RaceDayPage /> },
       { path: 'events/:eventId/crews/:crewId', element: <LineupPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
