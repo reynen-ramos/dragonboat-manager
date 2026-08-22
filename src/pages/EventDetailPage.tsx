@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ClipboardCheck,
   Copy,
   MoreVertical,
   Pencil,
@@ -21,6 +22,7 @@ import type { Category, ClubEvent, Crew } from '@/domain/types';
 import { countByLevel } from '@/domain/validation';
 import { useCrewIssues, useCrewLineup } from '@/queries/derived';
 import {
+  useAvailability,
   useCategories,
   useCreateCrew,
   useCrews,
@@ -29,6 +31,7 @@ import {
   useDeleteEvent,
   useDuplicateCrew,
   useEvent,
+  useMembers,
 } from '@/queries/hooks';
 import { categoryName, pluralise } from '@/utils/format';
 
@@ -66,6 +69,11 @@ export function EventDetailPage() {
           .join(' · ')}
         actions={
           <>
+            <Button asChild>
+              <Link to={`/events/${event.data.id}/availability`}>
+                <ClipboardCheck /> Availability
+              </Link>
+            </Button>
             <Button onClick={() => setEditing(true)}>
               <Pencil /> Edit
             </Button>
@@ -75,6 +83,8 @@ export function EventDetailPage() {
           </>
         }
       />
+
+      <AvailabilitySummary eventId={event.data.id} />
 
       {event.data.notes && (
         <p className="mb-6 rounded-xl surface-sunken px-4 py-3 text-sm">{event.data.notes}</p>
@@ -143,6 +153,48 @@ export function EventDetailPage() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * Availability at a glance.
+ *
+ * Shown on the event rather than only behind its own page, because who is
+ * actually coming is the first thing that shapes a lineup.
+ */
+function AvailabilitySummary({ eventId }: { eventId: string }) {
+  const availability = useAvailability(eventId);
+  const members = useMembers();
+
+  const active = (members.data ?? []).filter((m) => m.status === 'active');
+  if (active.length === 0) return null;
+
+  const byMember = new Map((availability.data ?? []).map((a) => [a.memberId, a.status]));
+  const count = (status: string) =>
+    active.filter((m) => byMember.get(m.id) === status).length;
+  const answered = count('in') + count('maybe') + count('out');
+
+  return (
+    <Link
+      to={`/events/${eventId}/availability`}
+      className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-subtle px-4 py-3 hover:surface-sunken"
+    >
+      <ClipboardCheck className="size-4 text-muted" />
+      {answered === 0 ? (
+        <span className="text-sm text-muted">
+          Nobody has been asked about this event yet — set availability
+        </span>
+      ) : (
+        <>
+          <Badge tone="good">{count('in')} in</Badge>
+          <Badge tone="warn">{count('maybe')} maybe</Badge>
+          <Badge tone="bad">{count('out')} out</Badge>
+          {active.length - answered > 0 && (
+            <Badge>{active.length - answered} not asked</Badge>
+          )}
+        </>
+      )}
+    </Link>
   );
 }
 

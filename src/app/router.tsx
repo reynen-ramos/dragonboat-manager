@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { AvailabilityPage } from '@/pages/AvailabilityPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { EventsPage } from '@/pages/EventsPage';
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: 'members/:memberId', element: <MemberDetailPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
+      { path: 'events/:eventId/availability', element: <AvailabilityPage /> },
       { path: 'events/:eventId/crews/:crewId', element: <LineupPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
