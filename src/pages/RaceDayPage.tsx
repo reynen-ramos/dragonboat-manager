@@ -85,7 +85,9 @@ function CategoryResults({ category }: { category: Category }) {
   const allEntries = useAllRaceEntries();
   const createEntry = useCreateRaceEntry();
 
-  const crewList = crews.data ?? [];
+  // Memoised because `?? []` would otherwise hand a fresh array to every memo
+  // below it on each render, defeating them.
+  const crewList = useMemo(() => crews.data ?? [], [crews.data]);
   const crewIds = useMemo(() => new Set(crewList.map((c) => c.id)), [crewList]);
 
   const entries = useMemo(

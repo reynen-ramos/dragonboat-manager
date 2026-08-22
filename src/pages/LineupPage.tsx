@@ -12,11 +12,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { ArrowLeft, Redo2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Printer, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/BalancePanel';
 import { BoatView, type SeatOccupant } from '@/components/boat/BoatView';
+import { CrewSheet } from '@/components/boat/CrewSheet';
 import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
 import { RosterPanel } from '@/components/boat/RosterPanel';
@@ -273,10 +274,13 @@ export function LineupPage() {
           <Button size="icon" variant="ghost" onClick={redo} disabled={!canRedo} aria-label="Redo">
             <Redo2 />
           </Button>
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer /> Crew sheet
+          </Button>
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="no-print mb-4">
         <h1 className="text-xl font-semibold sm:text-2xl">{crew.data.name}</h1>
         <p className="text-sm text-muted">
           {categoryName(category.data)} · {lineup.seated.length}/{category.data.boatSize} seated
@@ -307,7 +311,18 @@ export function LineupPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_18rem]">
+      <CrewSheet
+        crew={crew.data}
+        category={category.data}
+        event={event.data}
+        occupantAt={(seat) => lineup.bySeat.get(seatKey(seat))?.member}
+        drummer={lineup.drummer?.member}
+        cox={lineup.cox?.member}
+        reserves={lineup.reserves.map((r) => r.member)}
+        balance={balance}
+      />
+
+      <div className="no-print grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_18rem]">
         <div className={`${tab === 'roster' ? 'flex' : 'hidden'} min-h-0 lg:flex lg:max-h-[80vh]`}>
           {rosterPanel}
         </div>

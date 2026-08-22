@@ -25,6 +25,12 @@ seating is legal and balanced. That is what this is for.
 - **Crew checks** — seat counts, drummer and cox, women's and mixed-crew
   composition, paddlers double-booked within a category, unavailable paddlers,
   age divisions.
+- **Availability** — In/Out/Maybe per event. Unavailable paddlers are hidden
+  from the roster when building a lineup, and flagged if already seated.
+- **Race day** — heats, semis, and finals with lanes. Type finish times and
+  placements and gaps to the winner are derived from them, so fixing a mistyped
+  time re-orders the race for free.
+- **Crew sheet** — a one-page printable seating chart for the team tent.
 
 ## Running it
 
@@ -40,6 +46,7 @@ The app opens with an empty club. Press **Load demo club** on the dashboard for
 npm run build    # typecheck + production build
 npm test         # unit tests
 npm run lint
+node scripts/make-icons.mjs   # regenerate the app icons from their SVG source
 ```
 
 ## How it is put together
@@ -75,5 +82,7 @@ backup with the same care as the spreadsheet it replaces.
 
 ## Not built yet
 
-Sign-in and a shared database, paddler self-service availability, race day
-results, lineup versioning, and printable crew sheets.
+Sign-in and a shared database (Supabase, with admin/coach/paddler roles), so
+lineups sync across devices and paddlers set their own availability. Also
+lineup versioning, fitness/erg test data, and offline editing — today the app
+reads offline but needs a live page to write.
