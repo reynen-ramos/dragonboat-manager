@@ -10,7 +10,7 @@ import type {
   Session,
   SettingsRepo,
 } from '../repo';
-import { migrateSnapshot } from '../migrate';
+import { migrateSnapshot, UnreadableSnapshotError } from '../migrate';
 import { mutateDb, readDb, resetDb, seedDemoDb, writeDb } from './db';
 
 /**
@@ -166,9 +166,15 @@ const adminRepo: AdminRepo = {
   async importSnapshot(snapshot) {
     // Refuses rather than best-effort: the user picked this file deliberately,
     // so a clear rejection beats silently installing a damaged club over a
-    // good one. `migrateSnapshot` throws UnreadableSnapshotError with a
-    // sentence worth showing.
-    const { snapshot: migrated } = migrateSnapshot(snapshot);
+    // good one. That includes partial damage — discarding the dropped notes
+    // here used to install a backup minus its unreadable rows in silence,
+    // which is precisely the policy this comment claims to refuse.
+    const { snapshot: migrated, dropped } = migrateSnapshot(snapshot);
+    if (dropped.length > 0) {
+      throw new UnreadableSnapshotError(
+        `This backup has damaged rows, so nothing was imported. (${dropped.join('; ')}.)`,
+      );
+    }
     writeDb(migrated);
   },
   async loadDemoClub() {

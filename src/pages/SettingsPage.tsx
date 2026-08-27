@@ -6,6 +6,7 @@ import { NumberField } from '@/components/ui/NumberField';
 import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import type { BoatSize, Snapshot } from '@/domain/types';
 import {
+  UnreadableSnapshotError,
   exportSnapshot,
   useClearAllData,
   useImportSnapshot,
@@ -45,8 +46,14 @@ export function SettingsPage() {
       if (!Array.isArray(parsed.members)) throw new Error('missing members');
       await importSnapshot.mutateAsync(parsed);
       setImportError(undefined);
-    } catch {
-      setImportError('That file is not a Dragonboat Manager backup.');
+    } catch (error) {
+      // A refusal carries a sentence worth reading — "made by a newer
+      // version", "damaged rows" — that the generic line would bury.
+      setImportError(
+        error instanceof UnreadableSnapshotError
+          ? error.message
+          : 'That file is not a Dragonboat Manager backup.',
+      );
     }
   };
 
