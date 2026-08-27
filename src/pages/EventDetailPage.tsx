@@ -33,10 +33,12 @@ import {
   useDuplicateCrew,
   useEvent,
   useMembers,
+  useUndoableDelete,
 } from '@/queries/hooks';
 import { categoryName, pluralise } from '@/utils/format';
 
 export function EventDetailPage() {
+  const undoableDelete = useUndoableDelete();
   const { eventId } = useParams();
   const navigate = useNavigate();
   const event = useEvent(eventId);
@@ -151,7 +153,9 @@ export function EventDetailPage() {
                 variant="danger"
                 disabled={deleteEvent.isPending}
                 onClick={async () => {
-                  await deleteEvent.mutateAsync(event.data!.id);
+                  const name = event.data!.name;
+                  const bundle = await deleteEvent.mutateAsync(event.data!.id);
+                  undoableDelete(`Deleted ${name} and everything in it.`, bundle);
                   navigate('/events');
                 }}
               >
@@ -213,6 +217,7 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
   const crews = useCrews(category.id);
   const createCrew = useCreateCrew();
   const deleteCategory = useDeleteCategory();
+  const undoableDelete = useUndoableDelete();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const list = crews.data ?? [];
@@ -273,7 +278,8 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
               <Button
                 variant="danger"
                 onClick={async () => {
-                  await deleteCategory.mutateAsync(category.id);
+                  const bundle = await deleteCategory.mutateAsync(category.id);
+                  undoableDelete(`Deleted ${categoryName(category)} and its crews.`, bundle);
                   setConfirmingDelete(false);
                 }}
               >
@@ -302,6 +308,7 @@ function CrewCard({
   const issues = useCrewIssues(crew.id, category, event.id, event.startDate);
   const duplicate = useDuplicateCrew();
   const deleteCrew = useDeleteCrew();
+  const undoableDelete = useUndoableDelete();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const counts = countByLevel(issues);
@@ -380,7 +387,8 @@ function CrewCard({
               className="justify-start"
               disabled={deleteCrew.isPending}
               onClick={async () => {
-                await deleteCrew.mutateAsync(crew.id);
+                const bundle = await deleteCrew.mutateAsync(crew.id);
+                undoableDelete(`Deleted ${crew.name} and its lineup.`, bundle);
                 setMenuOpen(false);
               }}
             >

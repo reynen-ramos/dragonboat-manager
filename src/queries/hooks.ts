@@ -12,6 +12,8 @@ import {
   deleteEventCascade,
   deleteMemberCascade,
   duplicateCrew,
+  restoreDeleted,
+  type DeletedBundle,
 } from '@/data/operations';
 import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
 import type { SeatingChange } from '@/domain/seating';
@@ -347,6 +349,28 @@ const ALL_KEYS = [
 
 export const useLoadDemoClub = () =>
   useInvalidatingMutation(() => adapter.admin.loadDemoClub(), ALL_KEYS);
+
+export const useRestoreDeleted = () =>
+  useInvalidatingMutation((bundle: DeletedBundle) => restoreDeleted(adapter, bundle), ALL_KEYS);
+
+/**
+ * Offers Undo for a cascade that just ran.
+ *
+ * The bundle is everything the cascade removed; restoring it re-inserts the
+ * rows with their original ids, so nothing referencing them dangles. The
+ * offer lingers until dismissed — a silently expiring Undo is worse than a
+ * lingering one on a screen nobody is watching closely.
+ */
+export function useUndoableDelete() {
+  const restore = useRestoreDeleted();
+  const notify = useNotifications((s) => s.notify);
+  return (message: string, bundle: DeletedBundle) =>
+    notify({
+      message,
+      tone: 'info',
+      action: { label: 'Undo', run: () => void restore.mutateAsync(bundle) },
+    });
+}
 
 export const useClearAllData = () =>
   useInvalidatingMutation(() => adapter.admin.clearAll(), ALL_KEYS);

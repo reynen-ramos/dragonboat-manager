@@ -67,3 +67,25 @@ describe('failed writes', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('undo offers', () => {
+  it('runs the action and dismisses on click', async () => {
+    render(
+      <QueryClientProvider client={makeClient()}>
+        <Toaster />
+      </QueryClientProvider>,
+    );
+    let ran = false;
+    useNotifications.getState().notify({
+      message: 'Deleted Ana Reyes.',
+      tone: 'info',
+      action: { label: 'Undo', run: () => (ran = true) },
+    });
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Deleted Ana Reyes.');
+    await userEvent.click(screen.getByRole('button', { name: /undo/i }));
+
+    expect(ran).toBe(true);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
