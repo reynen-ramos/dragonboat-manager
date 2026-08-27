@@ -2,7 +2,15 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Drum, Pin, Ship } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { getBoatLayout, seatLabel, ZONE_LABELS } from '@/domain/boat';
-import type { Assignment, BoatSize, Member, SeatPosition, SeatZone, Side } from '@/domain/types';
+import type {
+  Assignment,
+  BoatSize,
+  Member,
+  PaddlerAssignment,
+  SeatPosition,
+  SeatZone,
+  Side,
+} from '@/domain/types';
 import { cn } from '@/utils/cn';
 import { fullName } from '@/utils/format';
 import {
@@ -31,9 +39,14 @@ export interface SeatOccupant {
   doubleBooked: boolean;
 }
 
+/** An occupant the caller has already resolved to a seat. */
+export interface SeatedOccupant extends SeatOccupant {
+  assignment: PaddlerAssignment;
+}
+
 export interface BoatViewProps {
   boatSize: BoatSize;
-  occupantAt: (seat: SeatPosition) => SeatOccupant | undefined;
+  occupantAt: (seat: SeatPosition) => SeatedOccupant | undefined;
   drummer?: SeatOccupant;
   cox?: SeatOccupant;
   onTogglePin?: (assignment: Assignment) => void;
@@ -139,7 +152,7 @@ function BoatRow({
   row: number;
   zone: SeatZone;
   showZoneLabel: boolean;
-  occupantAt: (seat: SeatPosition) => SeatOccupant | undefined;
+  occupantAt: (seat: SeatPosition) => SeatedOccupant | undefined;
   onTogglePin?: (assignment: Assignment) => void;
   highlighted: boolean;
   onSeatTap?: (seat: SeatPosition) => void;
@@ -181,7 +194,7 @@ function Seat({
   onTap,
 }: {
   seat: SeatPosition;
-  occupant?: SeatOccupant;
+  occupant?: SeatedOccupant;
   onTogglePin?: (assignment: Assignment) => void;
   highlighted: boolean;
   onTap?: (seat: SeatPosition) => void;
@@ -219,14 +232,14 @@ function SeatOccupantView({
   occupant,
   onTogglePin,
 }: {
-  occupant: SeatOccupant;
+  occupant: SeatedOccupant;
   onTogglePin?: (assignment: Assignment) => void;
 }) {
   const dragData: DragData = {
     kind: 'seat',
     assignmentId: occupant.assignment.id,
     memberId: occupant.member.id,
-    seat: occupant.assignment.seat!,
+    seat: occupant.assignment.seat,
   };
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: assignmentDraggableId(occupant.assignment.id),
@@ -242,7 +255,7 @@ function SeatOccupantView({
         // Without this the browser pans the page instead of starting a drag.
         style={{ touchAction: 'none' }}
         className="min-w-0 flex-1 cursor-grab text-left active:cursor-grabbing"
-        aria-label={`${fullName(occupant.member)}, ${seatLabel(occupant.assignment.seat!)}`}
+        aria-label={`${fullName(occupant.member)}, ${seatLabel(occupant.assignment.seat)}`}
       >
         <PaddlerChip
           member={occupant.member}

@@ -7,7 +7,6 @@ import type {
   AvailabilityStatus,
   Category,
   Member,
-  SeatPosition,
 } from '@/domain/types';
 import { validateCrew, type Issue } from '@/domain/validation';
 import {
@@ -64,8 +63,11 @@ export function useCrewLineup(crewId: string | undefined): CrewLineup {
       const member = membersById.get(assignment.memberId);
       if (!member) continue; // Deleted member; the cascade normally prevents this.
 
+      // The `seat` check is redundant against the type but not against storage:
+      // an older release or an edited backup can still hold a seatless paddler.
+      // `validateCrew` reports those; this loop just declines to seat them.
       if (assignment.role === 'paddler' && assignment.seat) {
-        const entry = { assignment: assignment as Assignment & { seat: SeatPosition }, member };
+        const entry = { assignment, member };
         seated.push(entry);
         bySeat.set(`${assignment.seat.row}-${assignment.seat.side}`, entry);
       } else if (assignment.role === 'drummer') drummer = { assignment, member };

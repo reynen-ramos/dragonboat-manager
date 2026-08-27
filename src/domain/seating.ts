@@ -1,5 +1,11 @@
 import { sameSeat } from './boat';
-import type { Assignment, CrewRole, SeatPosition } from './types';
+import type {
+  Assignment,
+  AssignmentInput,
+  AssignmentPatch,
+  CrewRole,
+  SeatPosition,
+} from './types';
 
 /**
  * What a drag-and-drop gesture does to a crew.
@@ -11,8 +17,8 @@ import type { Assignment, CrewRole, SeatPosition } from './types';
  */
 
 export type SeatingChange =
-  | { op: 'create'; assignment: Omit<Assignment, 'id'> }
-  | { op: 'update'; id: string; patch: Partial<Omit<Assignment, 'id'>> }
+  | { op: 'create'; assignment: AssignmentInput }
+  | { op: 'update'; id: string; patch: AssignmentPatch }
   | { op: 'delete'; id: string };
 
 /** Where a paddler is being dropped. */
@@ -113,9 +119,14 @@ export function applyChanges(assignments: Assignment[], changes: SeatingChange[]
     if (change.op === 'delete') {
       next = next.filter((a) => a.id !== change.id);
     } else if (change.op === 'update') {
-      next = next.map((a) => (a.id === change.id ? { ...a, ...change.patch } : a));
+      // A partial patch spread over a union cannot be proven to land on one
+      // variant. `planDrop` only ever emits role-consistent patches — it
+      // clears the seat in the same patch that demotes someone to reserve.
+      next = next.map((a) =>
+        a.id === change.id ? ({ ...a, ...change.patch } as Assignment) : a,
+      );
     } else {
-      next = [...next, { id: `new-${next.length}`, ...change.assignment }];
+      next = [...next, { id: `new-${next.length}`, ...change.assignment } as Assignment];
     }
   }
   return next;

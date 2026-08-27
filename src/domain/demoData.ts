@@ -1,6 +1,7 @@
 import { DEFAULT_CLUB_SETTINGS } from './rules.config';
 import type {
   Assignment,
+  AssignmentInput,
   Availability,
   AvailabilityStatus,
   Gender,
@@ -102,8 +103,8 @@ function buildMembers(): Member[] {
 function buildAssignments(): Assignment[] {
   const assignments: Assignment[] = [];
   let n = 0;
-  const add = (a: Omit<Assignment, 'id'>) =>
-    assignments.push({ id: `demo-assignment-${++n}`, ...a });
+  const add = (a: AssignmentInput) =>
+    assignments.push({ id: `demo-assignment-${++n}`, ...a } as Assignment);
 
   // Crew A: rows 1-7, left and right.
   const leftPaddlers = [15, 18, 21, 24, 27, 30, 0]; // indices into SEEDS

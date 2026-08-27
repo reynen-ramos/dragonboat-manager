@@ -2,12 +2,12 @@ import { getBoatLayout, seatKey, seatLabel } from './boat';
 import { ageOn } from './dates';
 import { AGE_DIVISION_BOUNDS } from './rules.config';
 import type {
-  Assignment,
   AvailabilityStatus,
   Category,
   ClubSettings,
   Member,
   SeatPosition,
+  StoredAssignment,
 } from './types';
 
 /**
@@ -30,7 +30,12 @@ export interface Issue {
 
 export interface ValidationInput {
   category: Category;
-  assignments: Assignment[];
+  /**
+   * The storage shape, not the domain union, on purpose: this function is the
+   * boundary that decides whether a stored crew is well-formed. Taking the
+   * strict `Assignment` here would assume the answer.
+   */
+  assignments: StoredAssignment[];
   /** Roster lookup for everyone referenced by `assignments`. */
   members: Map<string, Member>;
   settings: ClubSettings;
@@ -41,7 +46,7 @@ export interface ValidationInput {
    * both the Mixed and the Women's category at one regatta is entirely normal.
    * Two crews within one category race each other, so that is the real clash.
    */
-  categoryAssignments?: Pick<Assignment, 'crewId' | 'memberId'>[];
+  categoryAssignments?: Pick<StoredAssignment, 'crewId' | 'memberId'>[];
   /** Availability for this event, keyed by member id. */
   availability?: Map<string, AvailabilityStatus>;
   /** Event date, needed for age-division checks. */
@@ -64,7 +69,9 @@ export function validateCrew(input: ValidationInput): Issue[] {
    * carried on the crew but never seated leaves a bench visibly empty rather
    * than quietly filling the seat count.
    */
-  const seatedPaddlers = paddlers.filter((a) => a.seat);
+  const seatedPaddlers = paddlers.filter(
+    (a): a is StoredAssignment & { seat: SeatPosition } => Boolean(a.seat),
+  );
   const unseatedPaddlers = paddlers.filter((a) => !a.seat);
 
   const { boatSize } = getBoatLayout(category.boatSize);
@@ -101,7 +108,7 @@ export function validateCrew(input: ValidationInput): Issue[] {
   // Two people in one seat: possible through concurrent edits, so worth catching.
   const seatOccupants = new Map<string, string[]>();
   for (const a of seatedPaddlers) {
-    const key = seatKey(a.seat!);
+    const key = seatKey(a.seat);
     seatOccupants.set(key, [...(seatOccupants.get(key) ?? []), a.memberId]);
   }
   for (const [key, occupants] of seatOccupants) {

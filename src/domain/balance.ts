@@ -1,9 +1,9 @@
 import { getBoatLayout, isBowHalf } from './boat';
 import type {
-  Assignment,
   BoatSize,
   ClubSettings,
   Member,
+  PaddlerAssignment,
   SeatPosition,
   Side,
 } from './types';
@@ -24,7 +24,7 @@ import type {
 
 /** A paddler occupying a seat. Only `role: 'paddler'` assignments qualify. */
 export interface SeatedPaddler {
-  assignment: Assignment & { seat: SeatPosition };
+  assignment: PaddlerAssignment;
   member: Member;
 }
 

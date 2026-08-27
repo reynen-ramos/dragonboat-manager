@@ -16,7 +16,7 @@ import { ArrowLeft, Printer, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/BalancePanel';
-import { BoatView, type SeatOccupant } from '@/components/boat/BoatView';
+import { BoatView, type SeatedOccupant } from '@/components/boat/BoatView';
 import { CrewSheet } from '@/components/boat/CrewSheet';
 import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
@@ -211,17 +211,15 @@ export function LineupPage() {
     return <EmptyState title="That crew no longer exists." />;
   }
 
-  const occupantFor = (assignment: Assignment, member: Member): SeatOccupant => ({
+  const occupantFor = <A extends Assignment>(assignment: A, member: Member) => ({
     assignment,
     member,
-    wrongSide: Boolean(
-      assignment.seat && violatesSidePreference({ assignment: assignment as never, member }),
-    ),
+    wrongSide: assignment.role === 'paddler' && violatesSidePreference({ assignment, member }),
     unavailable: availability.get(member.id) === 'out',
     doubleBooked: doubleBookedIds.has(member.id),
   });
 
-  const occupantAt = (seat: SeatPosition): SeatOccupant | undefined => {
+  const occupantAt = (seat: SeatPosition): SeatedOccupant | undefined => {
     const entry = lineup.bySeat.get(seatKey(seat));
     return entry ? occupantFor(entry.assignment, entry.member) : undefined;
   };
