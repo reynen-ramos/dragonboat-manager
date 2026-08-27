@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/BalancePanel';
 import { BoatView, type SeatedOccupant } from '@/components/boat/BoatView';
+import { FillBoatDialog } from '@/components/boat/FillBoatDialog';
 import { CrewSheet } from '@/components/boat/CrewSheet';
 import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
@@ -37,6 +38,7 @@ import {
 } from '@/queries/derived';
 import {
   useApplySeatingChanges,
+  useSettings,
   useCategory,
   useCrew,
   useEvent,
@@ -100,6 +102,7 @@ export function LineupPage() {
   const issues = useCrewIssues(crewId, category.data, eventId, event.data?.startDate);
   const availability = useAvailabilityByMember(eventId);
   const categoryAssignments = useCategoryCrewAssignments(category.data?.id);
+  const settings = useSettings();
 
   const applyChangesMutation = useApplySeatingChanges();
   const replaceLineup = useReplaceCrewLineup();
@@ -292,6 +295,24 @@ export function LineupPage() {
 
   const checksPanel = (
     <div className="flex flex-col gap-3">
+      {crewId && category.data && members.data && (
+        <div className="flex justify-end">
+          <FillBoatDialog
+            membersById={membersById}
+            pending={applyChangesMutation.isPending}
+            onApply={(changes) => void applyChanges(changes)}
+            input={{
+              category: category.data,
+              crewId,
+              assignments: lineup.assignments,
+              members: members.data,
+              availability,
+              categoryAssignments,
+              settings,
+            }}
+          />
+        </div>
+      )}
       {balance && (
         <BalancePanel
           balance={balance}
