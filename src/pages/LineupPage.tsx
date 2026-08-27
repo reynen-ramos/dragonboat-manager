@@ -307,7 +307,9 @@ export function LineupPage() {
               assignments: lineup.assignments,
               members: members.data,
               availability,
-              categoryAssignments,
+              // A variant's whole point is sharing paddlers with the real
+              // plan, so occupancy there must not block filling the draft.
+              categoryAssignments: crew.data.variantOf ? [] : categoryAssignments,
               settings,
             }}
           />

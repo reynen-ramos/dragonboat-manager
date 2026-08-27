@@ -7,12 +7,14 @@ import { adapter, subscribeToExternalChanges, takeReadWarnings } from '@/data';
 export { UnreadableSnapshotError } from '@/data';
 import { useNotifications } from '@/stores/notifications';
 import {
+  createCrewVariant,
   deleteCategoryCascade,
   deleteCrewCascade,
   deleteEventCascade,
   deleteMemberCascade,
   duplicateCrew,
   restoreDeleted,
+  swapCrewLineups,
   type DeletedBundle,
 } from '@/data/operations';
 import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
@@ -253,6 +255,19 @@ export const useUpdateCrew = () =>
     ({ id, patch }: { id: string; patch: Partial<Omit<Crew, 'id'>> }) =>
       adapter.crews.update(id, patch),
     [keys.crews.all],
+  );
+
+export const useCreateCrewVariant = () =>
+  useInvalidatingMutation((crewId: string) => createCrewVariant(adapter, crewId), [
+    keys.crews.all,
+    keys.assignments.all,
+  ]);
+
+export const useSwapCrewLineups = () =>
+  useInvalidatingMutation(
+    ({ crewIdA, crewIdB }: { crewIdA: string; crewIdB: string }) =>
+      swapCrewLineups(adapter, crewIdA, crewIdB),
+    [keys.assignments.all],
   );
 
 export const useDeleteCrew = () =>

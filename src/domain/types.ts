@@ -93,6 +93,13 @@ export interface Crew {
   categoryId: string;
   name: string;
   notes?: string;
+  /**
+   * Set when this crew is an alternative lineup for another crew ("Plan B").
+   * A variant is a draft: it never races, never counts toward double-booking,
+   * and its paddlers stay eligible for every real crew. Optional and additive,
+   * so a v1 snapshot loads unchanged.
+   */
+  variantOf?: string;
 }
 
 interface AssignmentBase {

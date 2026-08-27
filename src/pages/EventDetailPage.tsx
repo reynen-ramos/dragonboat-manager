@@ -1,20 +1,9 @@
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  ClipboardCheck,
-  Copy,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Trash2,
-  Trophy,
-  Users,
-} from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowLeftRight, CheckCircle2, ClipboardCheck, Copy, GitCompareArrows, MoreVertical, Pencil, Plus, Trash2, Trophy, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CategoryForm } from '@/components/events/CategoryForm';
 import { EventForm } from '@/components/events/EventForm';
+import { LineupDiffDialog } from '@/components/events/LineupDiffDialog';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
@@ -26,6 +15,7 @@ import {
   useAvailability,
   useCategories,
   useCreateCrew,
+  useCreateCrewVariant,
   useCrews,
   useDeleteCategory,
   useDeleteCrew,
@@ -33,8 +23,10 @@ import {
   useDuplicateCrew,
   useEvent,
   useMembers,
+  useSwapCrewLineups,
   useUndoableDelete,
 } from '@/queries/hooks';
+import { useNotifications } from '@/stores/notifications';
 import { categoryName, pluralise } from '@/utils/format';
 
 export function EventDetailPage() {
@@ -221,12 +213,14 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const list = crews.data ?? [];
+  const primaries = list.filter((c) => !c.variantOf);
+  const variantsOf = (crewId: string) => list.filter((c) => c.variantOf === crewId);
 
   const addCrew = () =>
     createCrew.mutate({
       categoryId: category.id,
       // A, B, C… is what clubs call their crews, so continue the sequence.
-      name: `${String.fromCharCode(65 + list.length)} Crew`,
+      name: `${String.fromCharCode(65 + primaries.length)} Crew`,
     });
 
   return (
@@ -234,7 +228,10 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold">{categoryName(category)}</h2>
-          <Badge>{pluralise(list.length, 'crew')}</Badge>
+          <Badge>{pluralise(primaries.length, 'crew')}</Badge>
+          {list.length > primaries.length && (
+            <Badge tone="neutral">{pluralise(list.length - primaries.length, 'plan')}</Badge>
+          )}
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={addCrew} disabled={createCrew.isPending}>
@@ -251,7 +248,7 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
         </div>
       </div>
 
-      {list.length === 0 ? (
+      {primaries.length === 0 ? (
         <button
           onClick={addCrew}
           className="w-full rounded-xl border border-dashed border-subtle px-4 py-6 text-sm text-muted hover:surface-sunken"
@@ -260,8 +257,15 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
         </button>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
-          {list.map((crew) => (
-            <CrewCard key={crew.id} crew={crew} category={category} event={event} />
+          {primaries.map((crew) => (
+            <div key={crew.id} className="flex flex-col gap-2">
+              <CrewCard crew={crew} category={category} event={event} />
+              {variantsOf(crew.id).map((variant) => (
+                <div key={variant.id} className="ml-4">
+                  <CrewCard crew={variant} category={category} event={event} primary={crew} />
+                </div>
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -299,16 +303,22 @@ function CrewCard({
   crew,
   category,
   event,
+  primary,
 }: {
   crew: Crew;
   category: Category;
   event: ClubEvent;
+  /** Set when this card is an alternative plan for another crew. */
+  primary?: Crew;
 }) {
   const lineup = useCrewLineup(crew.id);
   const issues = useCrewIssues(crew.id, category, event.id, event.startDate);
   const duplicate = useDuplicateCrew();
   const deleteCrew = useDeleteCrew();
   const undoableDelete = useUndoableDelete();
+  const createVariant = useCreateCrewVariant();
+  const swapLineups = useSwapCrewLineups();
+  const notify = useNotifications((s) => s.notify);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const counts = countByLevel(issues);
@@ -320,7 +330,10 @@ function CrewCard({
         to={`/events/${event.id}/crews/${crew.id}`}
         className="block rounded-xl px-4 py-3.5 pr-12 hover:surface-sunken"
       >
-        <p className="font-medium">{crew.name}</p>
+        <p className="flex items-center gap-2 font-medium">
+          {crew.name}
+          {primary && <Badge tone="neutral">plan</Badge>}
+        </p>
         <p className="tabular mt-0.5 text-sm text-muted">
           {seatsFilled}/{category.boatSize} seated
           {lineup.drummer ? ' · drummer' : ''}
@@ -382,6 +395,41 @@ function CrewCard({
             >
               <Copy /> Duplicate with its lineup
             </Button>
+            {!primary && (
+              <Button
+                className="justify-start"
+                disabled={createVariant.isPending}
+                onClick={async () => {
+                  await createVariant.mutateAsync(crew.id);
+                  setMenuOpen(false);
+                }}
+              >
+                <GitCompareArrows /> Add an alternative plan
+              </Button>
+            )}
+            {primary && <LineupDiffDialog crew={crew} against={primary} />}
+            {primary && (
+              <Button
+                className="justify-start"
+                disabled={swapLineups.isPending}
+                onClick={async () => {
+                  await swapLineups.mutateAsync({ crewIdA: primary.id, crewIdB: crew.id });
+                  notify({
+                    message: `${primary.name} now uses this lineup; the previous one moved to ${crew.name}.`,
+                    tone: 'info',
+                    // The swap is its own inverse, which is what makes this a real Undo.
+                    action: {
+                      label: 'Undo',
+                      run: () =>
+                        void swapLineups.mutateAsync({ crewIdA: primary.id, crewIdB: crew.id }),
+                    },
+                  });
+                  setMenuOpen(false);
+                }}
+              >
+                <ArrowLeftRight /> Use this lineup for {primary.name}
+              </Button>
+            )}
             <Button
               variant="danger"
               className="justify-start"

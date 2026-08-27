@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { invalidateCache } from './mock/db';
 import { mockAdapter as adapter } from './mock/index';
 import {
+  createCrewVariant,
   deleteCrewCascade,
   deleteEventCascade,
   deleteMemberCascade,
   restoreDeleted,
+  swapCrewLineups,
 } from './operations';
 
 /**
@@ -143,5 +145,54 @@ describe('deleteCrewCascade', () => {
     await restoreDeleted(adapter, bundle);
     expect(await adapter.assignments.list({ crewId: crew.id })).toHaveLength(2);
     expect((await adapter.raceEntries.get(entry.id))?.stage).toBe('heat');
+  });
+});
+
+describe('crew variants', () => {
+  it('creates a marked copy named Plan B, then Plan C', async () => {
+    const { crew } = await seed();
+
+    const planB = await createCrewVariant(adapter, crew.id);
+    const planC = await createCrewVariant(adapter, crew.id);
+
+    expect(planB.name).toBe('A Crew · Plan B');
+    expect(planB.variantOf).toBe(crew.id);
+    expect(planC.name).toBe('A Crew · Plan C');
+    expect(await adapter.assignments.list({ crewId: planB.id })).toHaveLength(2);
+  });
+
+  it('swap exchanges lineups but not identities', async () => {
+    const { crew, seated } = await seed();
+    const planB = await createCrewVariant(adapter, crew.id);
+    // Change the plan so the two lineups differ.
+    await adapter.assignments.update(seated.id, { seat: { row: 5, side: 'right' } });
+
+    await swapCrewLineups(adapter, crew.id, planB.id);
+
+    // The original seated row now belongs to the variant, id unchanged.
+    expect((await adapter.assignments.get(seated.id))?.crewId).toBe(planB.id);
+    expect(await adapter.assignments.list({ crewId: crew.id })).toHaveLength(2);
+
+    // Self-inverse: running it again is the undo.
+    await swapCrewLineups(adapter, crew.id, planB.id);
+    expect((await adapter.assignments.get(seated.id))?.crewId).toBe(crew.id);
+  });
+});
+
+describe('deleting a crew with plans', () => {
+  it('takes its variants along, and restore brings the whole family back', async () => {
+    const { crew } = await seed();
+    const planB = await createCrewVariant(adapter, crew.id);
+
+    const bundle = await deleteCrewCascade(adapter, crew.id);
+
+    // An orphaned variant would persist in storage while rendering nowhere.
+    expect(bundle.crews.map((c) => c.id).sort()).toEqual([crew.id, planB.id].sort());
+    expect(await adapter.crews.list()).toHaveLength(0);
+    expect(await adapter.assignments.list()).toHaveLength(0);
+
+    await restoreDeleted(adapter, bundle);
+    expect((await adapter.crews.get(planB.id))?.variantOf).toBe(crew.id);
+    expect(await adapter.assignments.list({ crewId: planB.id })).toHaveLength(2);
   });
 });

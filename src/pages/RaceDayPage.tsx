@@ -92,7 +92,8 @@ function CategoryResults({ category }: { category: Category }) {
 
   // Memoised because `?? []` would otherwise hand a fresh array to every memo
   // below it on each render, defeating them.
-  const crewList = useMemo(() => crews.data ?? [], [crews.data]);
+  // Variants never race; only real crews appear on race day.
+  const crewList = useMemo(() => (crews.data ?? []).filter((c) => !c.variantOf), [crews.data]);
   const crewIds = useMemo(() => new Set(crewList.map((c) => c.id)), [crewList]);
 
   const entries = useMemo(
