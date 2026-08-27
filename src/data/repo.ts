@@ -30,6 +30,13 @@ export interface Repo<T extends { id: string }> {
   remove(id: string): Promise<void>;
   /** Applied as one atomic write, so a re-seat never leaves a half-moved crew. */
   bulkUpdate(patches: { id: string; patch: Partial<Omit<T, 'id'>> }[]): Promise<T[]>;
+  /**
+   * Re-inserts rows exactly as given, ids included, skipping any id that
+   * already exists. This is the undo path for cascades: restored rows must
+   * keep their identity or everything referencing them dangles, and skipping
+   * existing ids makes a second Undo press harmless.
+   */
+  restoreMany(rows: T[]): Promise<void>;
 }
 
 export interface AssignmentRepo extends Repo<Assignment> {

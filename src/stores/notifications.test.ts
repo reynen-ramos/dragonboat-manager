@@ -45,3 +45,34 @@ describe('messageForError', () => {
     expect(messageForError(new Error(''))).toMatch(/was not saved/);
   });
 });
+
+describe('undo offers', () => {
+  it('carries the action through', () => {
+    let ran = false;
+    state().notify({
+      message: 'Deleted Ana Reyes.',
+      tone: 'info',
+      action: { label: 'Undo', run: () => (ran = true) },
+    });
+
+    const [toast] = state().notifications;
+    expect(toast.tone).toBe('info');
+    toast.action?.run();
+    expect(ran).toBe(true);
+  });
+
+  it('does not dedupe two identical offers — two deletions are two undos', () => {
+    const offer = { message: 'Deleted A Crew and its lineup.', tone: 'info' as const };
+    state().notify(offer);
+    state().notify(offer);
+
+    expect(state().notifications).toHaveLength(2);
+  });
+
+  it('still dedupes identical errors', () => {
+    state().notify('Could not save.');
+    state().notify('Could not save.');
+
+    expect(state().notifications).toHaveLength(1);
+  });
+});

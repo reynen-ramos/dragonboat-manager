@@ -9,13 +9,14 @@ import { seatLabel } from '@/domain/boat';
 import { ageOn, formatDate, todayIso } from '@/domain/dates';
 import type { Assignment, CrewRole } from '@/domain/types';
 import {
-  useCrew,
   useCategory,
+  useCrew,
   useDeleteMember,
   useEvent,
   useMember,
   useMemberAssignments,
   useMemberAvailability,
+  useUndoableDelete,
 } from '@/queries/hooks';
 import { categoryName, fullName, formatWeight, GENDER_LABEL, SIDE_PREFERENCE_LABEL } from '@/utils/format';
 
@@ -33,6 +34,7 @@ export function MemberDetailPage() {
   const assignments = useMemberAssignments(memberId);
   const availability = useMemberAvailability(memberId);
   const deleteMember = useDeleteMember();
+  const undoableDelete = useUndoableDelete();
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -150,7 +152,9 @@ export function MemberDetailPage() {
                 variant="danger"
                 disabled={deleteMember.isPending}
                 onClick={async () => {
-                  await deleteMember.mutateAsync(m.id);
+                  const name = fullName(m);
+                  const bundle = await deleteMember.mutateAsync(m.id);
+                  undoableDelete(`Deleted ${name}.`, bundle);
                   navigate('/members');
                 }}
               >

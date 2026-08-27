@@ -47,6 +47,15 @@ function makeRepo<K extends EntityKey>(key: K): Repo<Snapshot[K][number]> {
       return rows().find((row) => row.id === id);
     },
 
+    async restoreMany(rowsToRestore) {
+      if (rowsToRestore.length === 0) return;
+      mutateDb((db) => {
+        const existing = new Set((db[key] as T[]).map((row) => row.id));
+        const fresh = rowsToRestore.filter((row) => !existing.has(row.id));
+        return { db: replace(db, [...(db[key] as T[]), ...fresh]), result: undefined };
+      });
+    },
+
     async create(input) {
       return mutateDb((db) => {
         const created = { ...input, id: newId() } as T;
