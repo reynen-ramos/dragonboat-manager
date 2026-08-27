@@ -57,9 +57,25 @@ export function allSeats(boatSize: BoatSize): SeatPosition[] {
   return seats;
 }
 
-/** Rows in the bow half of the boat, used for fore/aft trim. */
+/**
+ * Which end of the boat a row sits in, for fore/aft trim.
+ *
+ * A 10s boat has five rows, so there is no even split and the middle row
+ * belongs to neither end -- counting it as stern (which `row <= rows / 2`
+ * did) reported every 10s boat as stern-heavy even when perfectly trimmed.
+ * Excluding it measures the imbalance that actually exists.
+ */
+export function bowSternZone(row: number, boatSize: BoatSize): "bow" | "stern" | "middle" {
+  const { rows } = getBoatLayout(boatSize);
+  const half = rows / 2;
+  if (row <= Math.floor(half)) return "bow";
+  if (row > Math.ceil(half)) return "stern";
+  return "middle";
+}
+
+/** True for rows in the bow half. The middle row of an odd boat is not. */
 export function isBowHalf(row: number, boatSize: BoatSize): boolean {
-  return row <= getBoatLayout(boatSize).rows / 2;
+  return bowSternZone(row, boatSize) === "bow";
 }
 
 export function seatKey(seat: SeatPosition): string {

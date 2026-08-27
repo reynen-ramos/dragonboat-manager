@@ -153,7 +153,9 @@ export function useCategoryCrewAssignments(categoryId: string | undefined) {
     );
     return (allAssignments.data ?? [])
       .filter((a) => crewIds.has(a.crewId))
-      .map((a) => ({ crewId: a.crewId, memberId: a.memberId }));
+      // `role` travels with it so validation can tell a seated clash from
+      // someone merely listed as a reserve elsewhere.
+      .map((a) => ({ crewId: a.crewId, memberId: a.memberId, role: a.role }));
   }, [categoryId, crews.data, allAssignments.data]);
 }
 

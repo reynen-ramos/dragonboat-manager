@@ -10,6 +10,7 @@ import {
   formatDelta,
   groupKey,
   groupLabel,
+  raceCountsByStage,
   STAGE_LABELS,
   rankEntries,
   type RankedEntry,
@@ -110,7 +111,9 @@ function CategoryResults({ category }: { category: Category }) {
     return [...map.values()].sort((a, b) => compareGroups(a[0].entry, b[0].entry));
   }, [ranked]);
 
-  const heatCount = new Set(entries.filter((e) => e.stage === 'heat').map((e) => e.heat ?? 1)).size;
+  // Per stage, not the heat count for everything: a semi-final must be
+  // numbered by how many semis there are.
+  const raceCounts = raceCountsByStage(entries);
 
   /** Enters every crew in the category into a new race at once. */
   const addRace = (stage: RaceStage) => {
@@ -156,7 +159,7 @@ function CategoryResults({ category }: { category: Category }) {
               key={groupKey(group[0].entry)}
               group={group}
               crews={crewList}
-              heatCount={heatCount}
+              raceCounts={raceCounts}
             />
           ))}
         </div>
@@ -168,11 +171,11 @@ function CategoryResults({ category }: { category: Category }) {
 function RaceGroup({
   group,
   crews,
-  heatCount,
+  raceCounts,
 }: {
   group: RankedEntry[];
   crews: Crew[];
-  heatCount: number;
+  raceCounts: Record<RaceStage, number>;
 }) {
   const crewName = (id: string) => crews.find((c) => c.id === id)?.name ?? 'Unknown crew';
   const { stage, heat } = group[0].entry;
@@ -186,7 +189,7 @@ function RaceGroup({
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-subtle px-4 py-2.5">
-        <h3 className="text-sm font-semibold">{groupLabel(stage, heat, heatCount)}</h3>
+        <h3 className="text-sm font-semibold">{groupLabel(stage, heat, raceCounts[stage])}</h3>
         <Badge>{group.length === 1 ? '1 crew' : `${group.length} crews`}</Badge>
       </div>
       <ul className="divide-y divide-[var(--border-subtle)]">

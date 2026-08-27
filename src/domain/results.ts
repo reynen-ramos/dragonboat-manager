@@ -27,11 +27,32 @@ const STAGE_ORDER: RaceStage[] = ['heat', 'semi', 'final'];
 /** Crews only race each other within a stage and heat number. */
 export const groupKey = (entry: RaceEntry): string => `${entry.stage}:${entry.heat ?? 1}`;
 
-export function groupLabel(stage: RaceStage, heat: number | undefined, heatCount: number): string {
-  // "Heat 2" is only meaningful when there is more than one heat.
-  if (stage === 'heat' && heatCount > 1) return `Heat ${heat ?? 1}`;
-  if (stage === 'semi' && heatCount > 1) return `Semi-final ${heat ?? 1}`;
-  return STAGE_LABELS[stage];
+/**
+ * Labels one race within its stage.
+ *
+ * `count` is how many races that *same* stage holds. It used to be the heat
+ * count for every stage, so three heats and one semi rendered "Semi-final 1",
+ * and one heat with two semis rendered both as "Semi-final" -- two identical
+ * headings for different races.
+ *
+ * Finals are lettered, as regattas write them: the A final is the one that
+ * decides the medals, the B final is for the crews below it.
+ */
+export function groupLabel(stage: RaceStage, heat: number | undefined, count: number): string {
+  if (count <= 1) return STAGE_LABELS[stage];
+  const n = heat ?? 1;
+  if (stage === "final") {
+    const letter = String.fromCharCode(64 + n); // 1 -> A, 2 -> B
+    return n <= 26 ? letter + " Final" : "Final " + n;
+  }
+  return STAGE_LABELS[stage] + " " + n;
+}
+
+/** How many distinct races each stage holds, for `groupLabel`. */
+export function raceCountsByStage(entries: RaceEntry[]): Record<RaceStage, number> {
+  const seen: Record<RaceStage, Set<number>> = { heat: new Set(), semi: new Set(), final: new Set() };
+  for (const entry of entries) seen[entry.stage].add(entry.heat ?? 1);
+  return { heat: seen.heat.size, semi: seen.semi.size, final: seen.final.size };
 }
 
 /**
@@ -56,9 +77,11 @@ export function rankEntries(entries: RaceEntry[]): RankedEntry[] {
 
   for (const group of groups.values()) {
     const timed = group
-      .filter((e): e is RaceEntry & { timeMs: number } => typeof e.timeMs === 'number')
+      // `typeof NaN === 'number'`, so the old check let a NaN time take
+      // placement 1 and push the real times down the sheet.
+      .filter((e): e is RaceEntry & { timeMs: number } => Number.isFinite(e.timeMs))
       .sort((a, b) => a.timeMs - b.timeMs);
-    const untimed = group.filter((e) => typeof e.timeMs !== 'number');
+    const untimed = group.filter((e) => !Number.isFinite(e.timeMs));
 
     const fastest = timed[0]?.timeMs;
 

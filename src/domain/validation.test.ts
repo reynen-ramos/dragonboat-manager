@@ -45,7 +45,13 @@ function fullCrew(
   }
 
   for (const role of ['drummer', 'cox'] as const) {
-    const member = makeMember({ id: role });
+    // Qualified, so the baseline crew really is clean — validateCrew warns
+    // about a drummer who is not recorded as able to drum.
+    const member = makeMember({
+      id: role,
+      canDrum: role === 'drummer',
+      canSteer: role === 'cox',
+    });
     members.set(member.id, member);
     assignments.push({ id: `a-${role}`, crewId: 'crew-1', memberId: member.id, role });
   }
@@ -235,7 +241,7 @@ describe('cross-crew and availability checks', () => {
       category: category(20, 'open'),
       assignments,
       members,
-      categoryAssignments: [{ crewId: 'crew-2', memberId: 'p3' }],
+      categoryAssignments: [{ crewId: 'crew-2', memberId: 'p3', role: 'paddler' }],
     });
 
     const issue = issues.find((i) => i.code === 'DOUBLE_BOOKED');
@@ -249,7 +255,11 @@ describe('cross-crew and availability checks', () => {
       category: category(20, 'open'),
       assignments,
       members,
-      categoryAssignments: assignments.map((a) => ({ crewId: a.crewId, memberId: a.memberId })),
+      categoryAssignments: assignments.map((a) => ({
+        crewId: a.crewId,
+        memberId: a.memberId,
+        role: a.role,
+      })),
     });
 
     expect(codes(issues)).not.toContain('DOUBLE_BOOKED');
@@ -352,5 +362,64 @@ describe('missing data', () => {
     const issue = issues.find((i) => i.code === 'SIDE_PREFERENCE');
     expect(issue?.level).toBe('warning');
     expect(issue?.memberId).toBe('p0');
+  });
+});
+
+describe('drummer and cox qualifications', () => {
+  it('warns about a cox not recorded as able to steer', () => {
+    // canSteer is collected on the member form and shown on member cards,
+    // and until now nothing ever checked it.
+    const { assignments, members } = fullCrew(10);
+    members.set('cox', makeMember({ id: 'cox', canSteer: false }));
+
+    const issues = run({ category: category(10, 'open'), assignments, members });
+    const issue = issues.find((i) => i.code === 'UNQUALIFIED_COX');
+
+    expect(issue?.level).toBe('warning');
+    expect(issue?.memberId).toBe('cox');
+  });
+
+  it('warns about a drummer not recorded as able to drum', () => {
+    const { assignments, members } = fullCrew(10);
+    members.set('drummer', makeMember({ id: 'drummer', canDrum: false }));
+
+    expect(codes(run({ category: category(10, 'open'), assignments, members }))).toContain(
+      'UNQUALIFIED_DRUMMER',
+    );
+  });
+
+  it('says nothing when both are qualified', () => {
+    const { assignments, members } = fullCrew(10);
+
+    expect(codes(run({ category: category(10, 'open'), assignments, members }))).toEqual([]);
+  });
+});
+
+describe('reserves in another crew', () => {
+  it('are not a double booking', () => {
+    // Being a spare for the other boat in the same category is normal.
+    // Reserves were excluded on this side of the comparison but not the
+    // other, so it was reported as a blocking error.
+    const { assignments, members } = fullCrew(10);
+    const issues = run({
+      category: category(10, 'open'),
+      assignments,
+      members,
+      categoryAssignments: [{ crewId: 'crew-2', memberId: 'p3', role: 'reserve' }],
+    });
+
+    expect(codes(issues)).not.toContain('DOUBLE_BOOKED');
+  });
+
+  it('still flags someone actually seated in the other crew', () => {
+    const { assignments, members } = fullCrew(10);
+    const issues = run({
+      category: category(10, 'open'),
+      assignments,
+      members,
+      categoryAssignments: [{ crewId: 'crew-2', memberId: 'p3', role: 'paddler' }],
+    });
+
+    expect(codes(issues)).toContain('DOUBLE_BOOKED');
   });
 });
