@@ -55,9 +55,22 @@ export function emptySnapshot(): Snapshot {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** A row is keepable only if it is an object carrying a usable string id. */
-const hasId = (row: unknown): row is Record<string, unknown> & { id: string } =>
-  isRecord(row) && typeof row.id === 'string' && row.id.length > 0;
+const hasKey = (row: Record<string, unknown>, key: string): boolean =>
+  typeof row[key] === 'string' && (row[key] as string).length > 0;
+
+/**
+ * Whether a stored row is worth keeping, judged by the entity's real key.
+ *
+ * Most collections are keyed by `id`. Availability is not — it has no id at
+ * all; its identity is (eventId, memberId). Requiring an id of every
+ * collection deleted every availability row on every load, and reported the
+ * deletion as "unreadable rows skipped", which misdiagnosed its own bug.
+ */
+const keepRow = (collection: (typeof COLLECTIONS)[number], row: unknown): boolean => {
+  if (!isRecord(row)) return false;
+  if (collection === 'availability') return hasKey(row, 'eventId') && hasKey(row, 'memberId');
+  return hasKey(row, 'id');
+};
 
 /**
  * Coerces stored data into a snapshot, reporting what it had to discard.
@@ -92,11 +105,11 @@ export function migrateSnapshot(raw: unknown): MigrationResult {
       dropped.push(`${key}: not a list, ignored`);
       continue;
     }
-    const kept = value.filter(hasId);
+    const kept = value.filter((row) => keepRow(key, row));
     if (kept.length < value.length) {
       dropped.push(`${key}: ${value.length - kept.length} unreadable row(s) skipped`);
     }
-    // Cast is the boundary itself: rows are shape-checked as far as an id, and
+    // Cast is the boundary itself: rows are shape-checked as far as their key, and
     // `validateCrew` reports what survives but is still wrong.
     (base[key] as unknown[]) = kept;
   }

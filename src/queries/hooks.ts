@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { type UseMutationResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adapter, subscribeToExternalChanges, takeReadWarnings } from '@/data';
+
+// Re-exported so the UI can distinguish a refusal worth reading (a backup
+// from a newer version, damaged rows) without importing from @/data itself.
+export { UnreadableSnapshotError } from '@/data';
 import { useNotifications } from '@/stores/notifications';
 import {
   deleteCategoryCascade,

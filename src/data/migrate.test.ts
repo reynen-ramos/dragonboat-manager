@@ -74,3 +74,32 @@ describe('migrateSnapshot', () => {
     expect(migrateSnapshot(good).snapshot.version).toBe(CURRENT_VERSION);
   });
 });
+
+describe('availability rows', () => {
+  const row = {
+    eventId: 'e1',
+    memberId: 'm1',
+    status: 'in',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  it('survive a migration despite having no id', () => {
+    // Availability is keyed by (eventId, memberId) and has never carried an
+    // id. Requiring one of every collection deleted every availability row on
+    // every load — and reported it as "unreadable rows skipped".
+    const { snapshot, dropped } = migrateSnapshot({ ...good, availability: [row] });
+
+    expect(snapshot.availability).toHaveLength(1);
+    expect(dropped).toEqual([]);
+  });
+
+  it('are still dropped when their real key is missing', () => {
+    const { snapshot, dropped } = migrateSnapshot({
+      ...good,
+      availability: [row, { status: 'in' }, { eventId: 'e1', status: 'in' }],
+    });
+
+    expect(snapshot.availability).toHaveLength(1);
+    expect(dropped).toEqual(['availability: 2 unreadable row(s) skipped']);
+  });
+});

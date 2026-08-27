@@ -34,3 +34,5 @@ export type { DataAdapter } from './repo';
  * they belong on `DataAdapter` rather than beside it.
  */
 export { subscribeToExternalChanges, takeReadWarnings } from './mock/db';
+
+export { UnreadableSnapshotError } from './migrate';
