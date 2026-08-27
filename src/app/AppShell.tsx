@@ -1,6 +1,7 @@
 import { CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { Toaster } from '@/components/ui/Toaster';
 import { cn } from '@/utils/cn';
 
 /**
@@ -25,6 +26,7 @@ export function AppShell() {
         <Outlet />
       </main>
       <BottomBar />
+      <Toaster />
     </div>
   );
 }

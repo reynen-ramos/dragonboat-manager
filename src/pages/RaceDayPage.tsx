@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate, formatRaceTime, parseRaceTime } from '@/domain/dates';
 import {
   compareGroups,
@@ -41,6 +41,9 @@ export function RaceDayPage() {
   const categories = useCategories(eventId);
 
   if (event.isLoading || categories.isLoading) return <Spinner />;
+  if (event.isError || categories.isError) {
+    return <LoadFailed onRetry={() => { void event.refetch(); void categories.refetch(); }} />;
+  }
   if (!event.data) return <EmptyState title="That event no longer exists." />;
 
   const list = categories.data ?? [];

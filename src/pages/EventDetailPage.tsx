@@ -17,7 +17,7 @@ import { CategoryForm } from '@/components/events/CategoryForm';
 import { EventForm } from '@/components/events/EventForm';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate } from '@/domain/dates';
 import type { Category, ClubEvent, Crew } from '@/domain/types';
 import { countByLevel } from '@/domain/validation';
@@ -47,6 +47,9 @@ export function EventDetailPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (event.isLoading || categories.isLoading) return <Spinner />;
+  if (event.isError || categories.isError) {
+    return <LoadFailed onRetry={() => { void event.refetch(); void categories.refetch(); }} />;
+  }
   if (!event.data) return <EmptyState title="That event no longer exists." />;
 
   const list = categories.data ?? [];

@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { NumberField } from '@/components/ui/NumberField';
-import { Card, PageHeader, Spinner } from '@/components/ui/misc';
+import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import type { BoatSize, Snapshot } from '@/domain/types';
 import {
   exportSnapshot,
@@ -53,6 +53,7 @@ export function SettingsPage() {
   // Without this, a keystroke landing before the query resolves would save the
   // defaults `useSettings` substitutes, over whatever the club had stored.
   if (settingsQuery.isPending) return <Spinner />;
+  if (settingsQuery.isError) return <LoadFailed onRetry={() => void settingsQuery.refetch()} />;
 
   return (
     <>

@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate } from '@/domain/dates';
 import type { Availability, AvailabilityStatus, Member } from '@/domain/types';
 import { useAvailability, useEvent, useMembers, useSetAvailability } from '@/queries/hooks';
@@ -51,6 +51,9 @@ export function AvailabilityPage() {
   }, [active, search]);
 
   if (event.isLoading || members.isLoading || availability.isLoading) return <Spinner />;
+  if (event.isError || members.isError || availability.isError) {
+    return <LoadFailed onRetry={() => { void event.refetch(); void members.refetch(); void availability.refetch(); }} />;
+  }
   if (!event.data) return <EmptyState title="That event no longer exists." />;
 
   const counts = {

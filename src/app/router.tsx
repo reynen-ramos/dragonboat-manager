@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { RouteError } from './RouteError';
 import { AvailabilityPage } from '@/pages/AvailabilityPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
@@ -15,6 +16,9 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppShell />,
+    // Without this a thrown render error replaces the whole app with React
+    // Router's default screen, which looks indistinguishable from data loss.
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'members', element: <MembersPage /> },
