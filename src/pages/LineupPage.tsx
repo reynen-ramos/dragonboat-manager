@@ -135,7 +135,10 @@ export function LineupPage() {
   /** Members seated in more than one crew in this category — a real clash. */
   const doubleBookedIds = useMemo(() => {
     const counts = new Map<string, Set<string>>();
-    for (const { crewId: id, memberId } of categoryAssignments) {
+    for (const { crewId: id, memberId, role } of categoryAssignments) {
+      // Reserves do not race, so the validator does not count them as a
+      // clash; the chip must agree or the boat and the Checks panel argue.
+      if (role === 'reserve') continue;
       counts.set(memberId, (counts.get(memberId) ?? new Set()).add(id));
     }
     return new Set(
