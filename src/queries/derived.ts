@@ -44,6 +44,13 @@ export interface CrewLineup {
   cox?: { assignment: Assignment; member: Member };
   reserves: { assignment: Assignment; member: Member }[];
   isLoading: boolean;
+  /**
+   * A failed read must not render as an empty boat: with history active, one
+   * drag then records [] as the "before" snapshot, and undo writes it back
+   * over the crew's real stored lineup.
+   */
+  isError: boolean;
+  refetch: () => void;
 }
 
 export function useCrewLineup(crewId: string | undefined): CrewLineup {
@@ -84,8 +91,13 @@ export function useCrewLineup(crewId: string | undefined): CrewLineup {
       cox,
       reserves,
       isLoading: assignments.isLoading || members.isLoading,
+      isError: assignments.isError || members.isError,
+      refetch: () => {
+        void assignments.refetch();
+        void members.refetch();
+      },
     };
-  }, [assignments.data, assignments.isLoading, members.isLoading, membersById]);
+  }, [assignments, members, membersById]);
 }
 
 export const useAvailabilityByMember = (

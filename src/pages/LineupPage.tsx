@@ -146,8 +146,12 @@ export function LineupPage() {
   const applyChanges = useCallback(
     async (changes: SeatingChange[]) => {
       if (changes.length === 0 || !crewId) return;
-      recordHistory(crewId, lineup.assignments);
+      // The snapshot is captured before the write but recorded only after it
+      // succeeds — recording first left a phantom undo entry when the write
+      // failed: Undo lit up, and restored a state that had never changed.
+      const before = lineup.assignments;
       await applyChangesMutation.mutateAsync(changes);
+      recordHistory(crewId, before);
     },
     [applyChangesMutation, crewId, recordHistory, lineup.assignments],
   );
@@ -200,13 +204,16 @@ export function LineupPage() {
   };
 
   const undo = useCallback(() => {
-    if (!crewId) return;
+    // The pending guard is what keeps a rapid double Ctrl-Z honest: the second
+    // press would otherwise read the render closure's pre-refetch assignments
+    // and push that stale copy onto the redo stack.
+    if (!crewId || replaceLineup.isPending) return;
     const restored = undoHistory(lineup.assignments);
     if (restored) void replaceLineup.mutateAsync({ crewId, assignments: restored });
   }, [crewId, undoHistory, lineup.assignments, replaceLineup]);
 
   const redo = useCallback(() => {
-    if (!crewId) return;
+    if (!crewId || replaceLineup.isPending) return;
     const restored = redoHistory(lineup.assignments);
     if (restored) void replaceLineup.mutateAsync({ crewId, assignments: restored });
   }, [crewId, redoHistory, lineup.assignments, replaceLineup]);
@@ -237,7 +244,7 @@ export function LineupPage() {
   if (crew.isLoading || category.isLoading || members.isLoading || event.isLoading) {
     return <Spinner />;
   }
-  if (crew.isError || category.isError || members.isError || event.isError) {
+  if (crew.isError || category.isError || members.isError || event.isError || lineup.isError) {
     return (
       <LoadFailed
         onRetry={() => {
@@ -245,6 +252,7 @@ export function LineupPage() {
           void category.refetch();
           void members.refetch();
           void event.refetch();
+          lineup.refetch();
         }}
       />
     );
