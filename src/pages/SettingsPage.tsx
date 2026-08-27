@@ -14,7 +14,7 @@ import {
   useSettings,
   useSettingsQuery,
 } from '@/queries/hooks';
-import { downloadTextFile } from '@/utils/csv';
+import { downloadTextFile } from '@/utils/download';
 
 /** A fraction stored as 0.03 is shown as 3, without a float tail. */
 const asPercent = (fraction: number) => Math.round(fraction * 1000) / 10;

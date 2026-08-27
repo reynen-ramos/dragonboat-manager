@@ -106,6 +106,11 @@ export function CsvImportDialog({
               {preview.errors.length > 0 && (
                 <Badge tone="warn">{pluralise(preview.errors.length, 'row')} skipped</Badge>
               )}
+              {preview.warnings.length > 0 && (
+                <Badge tone="warn">
+                  {pluralise(preview.warnings.length, 'warning')}
+                </Badge>
+              )}
             </div>
 
             {preview.unmatchedHeaders.length > 0 && (
@@ -113,6 +118,20 @@ export function CsvImportDialog({
                 Ignored {preview.unmatchedHeaders.length === 1 ? 'column' : 'columns'}:{' '}
                 {preview.unmatchedHeaders.join(', ')}
               </p>
+            )}
+
+            {preview.warnings.length > 0 && (
+              <ul className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                {preview.warnings.slice(0, 5).map((warning, i) => (
+                  <li key={`${warning.row ?? 'file'}-${i}`}>
+                    {warning.row ? `Row ${warning.row}: ` : ''}
+                    {warning.message}
+                  </li>
+                ))}
+                {preview.warnings.length > 5 && (
+                  <li>and {preview.warnings.length - 5} more</li>
+                )}
+              </ul>
             )}
 
             {preview.errors.length > 0 && (
