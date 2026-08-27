@@ -1,5 +1,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
+import { TriangleAlert } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
+import { Button } from './Button';
 import { cn } from '@/utils/cn';
 
 const badge = cva('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium', {
@@ -75,6 +77,31 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted" role="status">
       <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       {label}
+    </div>
+  );
+}
+
+/**
+ * What a screen shows when the data it needs could not be read.
+ *
+ * Distinct from `EmptyState` on purpose. An unreadable club and an empty club
+ * look identical once a failed query is read as `data ?? []`, and the two call
+ * for opposite actions: an empty club invites you to load demo data, which
+ * over an unreadable one would overwrite whatever is really stored.
+ */
+export function LoadFailed({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-red-300 px-6 py-14 text-center dark:border-red-800">
+      <div className="text-red-600 [&_svg]:size-8">
+        <TriangleAlert />
+      </div>
+      <div>
+        <p className="font-medium">This could not be loaded.</p>
+        <p className="mt-1 text-sm text-muted">
+          Your club data is stored in this browser. Nothing has been changed or deleted.
+        </p>
+      </div>
+      {onRetry && <Button onClick={onRetry}>Try again</Button>}
     </div>
   );
 }

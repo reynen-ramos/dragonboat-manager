@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EventForm } from '@/components/events/EventForm';
 import { Button } from '@/components/ui/Button';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate, todayIso } from '@/domain/dates';
 import type { ClubEvent } from '@/domain/types';
 import { useCategories, useEvents } from '@/queries/hooks';
@@ -14,6 +14,9 @@ export function EventsPage() {
   const [creating, setCreating] = useState(false);
 
   if (events.isLoading) return <Spinner />;
+  if (events.isError) {
+    return <LoadFailed onRetry={() => { void events.refetch(); }} />;
+  }
 
   const today = todayIso();
   const all = events.data ?? [];

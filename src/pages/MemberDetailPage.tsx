@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MemberForm } from '@/components/members/MemberForm';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { seatLabel } from '@/domain/boat';
 import { ageOn, formatDate, todayIso } from '@/domain/dates';
 import type { Assignment, CrewRole } from '@/domain/types';
@@ -37,6 +37,9 @@ export function MemberDetailPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (member.isLoading) return <Spinner />;
+  if (member.isError) {
+    return <LoadFailed onRetry={() => { void member.refetch(); }} />;
+  }
   if (!member.data) return <EmptyState title="That member no longer exists." />;
 
   const m = member.data;

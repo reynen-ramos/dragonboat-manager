@@ -22,7 +22,7 @@ import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
 import { RosterPanel } from '@/components/boat/RosterPanel';
 import { Button } from '@/components/ui/Button';
-import { Card, EmptyState, Spinner } from '@/components/ui/misc';
+import { Card, EmptyState, LoadFailed, Spinner } from '@/components/ui/misc';
 import { planBalancedSeating, violatesSidePreference } from '@/domain/balance';
 import { seatKey } from '@/domain/boat';
 import { planDrop, type DropTarget, type SeatingChange } from '@/domain/seating';
@@ -206,7 +206,23 @@ export function LineupPage() {
     useSensor(KeyboardSensor),
   );
 
-  if (crew.isLoading || category.isLoading || members.isLoading) return <Spinner />;
+  // `event` belongs in both guards: it is read below, and leaving it out fell
+  // through to "That crew no longer exists" while it was still loading.
+  if (crew.isLoading || category.isLoading || members.isLoading || event.isLoading) {
+    return <Spinner />;
+  }
+  if (crew.isError || category.isError || members.isError || event.isError) {
+    return (
+      <LoadFailed
+        onRetry={() => {
+          void crew.refetch();
+          void category.refetch();
+          void members.refetch();
+          void event.refetch();
+        }}
+      />
+    );
+  }
   if (!crew.data || !category.data || !event.data) {
     return <EmptyState title="That crew no longer exists." />;
   }

@@ -5,7 +5,7 @@ import { CsvImportDialog } from '@/components/members/CsvImportDialog';
 import { MemberForm } from '@/components/members/MemberForm';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
-import { Badge, Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { ageOn, todayIso } from '@/domain/dates';
 import type { Member, MemberStatus, SidePreference } from '@/domain/types';
 import { useMembers } from '@/queries/hooks';
@@ -44,6 +44,9 @@ export function MembersPage() {
   }, [members.data, search, status, side, sort]);
 
   if (members.isLoading) return <Spinner />;
+  if (members.isError) {
+    return <LoadFailed onRetry={() => { void members.refetch(); }} />;
+  }
 
   const total = members.data?.length ?? 0;
 

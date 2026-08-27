@@ -1,7 +1,7 @@
 import { CalendarDays, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Card, EmptyState, PageHeader, Spinner } from '@/components/ui/misc';
+import { Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate, todayIso } from '@/domain/dates';
 import { useEvents, useLoadDemoClub, useMembers } from '@/queries/hooks';
 import { categoryName, pluralise } from '@/utils/format';
@@ -13,6 +13,9 @@ export function DashboardPage() {
   const loadDemo = useLoadDemoClub();
 
   if (members.isLoading || events.isLoading) return <Spinner />;
+  if (members.isError || events.isError) {
+    return <LoadFailed onRetry={() => { void members.refetch(); void events.refetch(); }} />;
+  }
 
   const activeMembers = (members.data ?? []).filter((m) => m.status === 'active');
   const today = todayIso();
