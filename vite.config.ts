@@ -34,24 +34,31 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   test: {
-    // Two projects, so the domain layer keeps running without a DOM. That is not
-    // an optimisation — it is what stops a browser API from quietly reaching
-    // `src/domain`, which the architecture requires to stay portable.
+    // Two projects. The split is not about speed — it is what keeps a browser
+    // API from quietly reaching the layers that must stay portable.
     projects: [
       {
         extends: true,
         test: {
           name: 'domain',
           environment: 'node',
-          include: ['src/**/*.test.ts'],
+          // Scoped to the pure layers on purpose. A wider glob would pull in
+          // storage tests, which legitimately need a DOM, and the first
+          // `@vitest-environment jsdom` docblock added to satisfy them would
+          // hand every domain test a `window` without anyone noticing.
+          include: ['src/domain/**/*.test.ts', 'src/utils/**/*.test.ts'],
         },
       },
       {
         extends: true,
         test: {
-          name: 'ui',
+          name: 'app',
           environment: 'jsdom',
-          include: ['src/**/*.test.tsx'],
+          include: [
+            'src/**/*.test.tsx',
+            'src/data/**/*.test.ts',
+            'src/stores/**/*.test.ts',
+          ],
           setupFiles: ['./src/test/setup.ts'],
         },
       },

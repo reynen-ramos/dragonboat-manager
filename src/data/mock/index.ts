@@ -10,6 +10,7 @@ import type {
   Session,
   SettingsRepo,
 } from '../repo';
+import { migrateSnapshot } from '../migrate';
 import { mutateDb, readDb, resetDb, seedDemoDb, writeDb } from './db';
 
 /**
@@ -163,7 +164,12 @@ const adminRepo: AdminRepo = {
     return { ...readDb(), exportedAt: new Date().toISOString() };
   },
   async importSnapshot(snapshot) {
-    writeDb(snapshot);
+    // Refuses rather than best-effort: the user picked this file deliberately,
+    // so a clear rejection beats silently installing a damaged club over a
+    // good one. `migrateSnapshot` throws UnreadableSnapshotError with a
+    // sentence worth showing.
+    const { snapshot: migrated } = migrateSnapshot(snapshot);
+    writeDb(migrated);
   },
   async loadDemoClub() {
     seedDemoDb();
