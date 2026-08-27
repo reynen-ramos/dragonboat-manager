@@ -46,7 +46,7 @@ export interface ValidationInput {
    * both the Mixed and the Women's category at one regatta is entirely normal.
    * Two crews within one category race each other, so that is the real clash.
    */
-  categoryAssignments?: Pick<StoredAssignment, 'crewId' | 'memberId'>[];
+  categoryAssignments?: Pick<StoredAssignment, 'crewId' | 'memberId' | 'role'>[];
   /** Availability for this event, keyed by member id. */
   availability?: Map<string, AvailabilityStatus>;
   /** Event date, needed for age-division checks. */
@@ -146,6 +146,28 @@ export function validateCrew(input: ValidationInput): Issue[] {
     });
   }
 
+  // --- Qualifications -------------------------------------------------------
+  // `canDrum` and `canSteer` are collected on the member form and shown on
+  // member cards, but nothing has ever checked them. A warning rather than an
+  // error on purpose: an imported roster leaves both false for everyone, and
+  // an error would block every crew in the club on missing data alone.
+  for (const [role, flag, noun] of [
+    ['drummer', 'canDrum', 'drum'],
+    ['cox', 'canSteer', 'steer'],
+  ] as const) {
+    for (const a of assignments.filter((x) => x.role === role)) {
+      const member = members.get(a.memberId);
+      if (member && !member[flag]) {
+        issues.push({
+          level: 'warning',
+          code: role === 'drummer' ? 'UNQUALIFIED_DRUMMER' : 'UNQUALIFIED_COX',
+          message: `${fullName(member)} is not recorded as able to ${noun}.`,
+          memberId: member.id,
+        });
+      }
+    }
+  }
+
   // --- Gender class ---------------------------------------------------------
   const paddlerMembers = seatedPaddlers
     .map((a) => members.get(a.memberId))
@@ -187,6 +209,10 @@ export function validateCrew(input: ValidationInput): Issue[] {
     const clashing = new Set<string>();
     for (const other of input.categoryAssignments) {
       if (crewIds.has(other.crewId)) continue;
+      // Being a spare for the other boat is normal and not a clash. Reserves
+      // are already excluded on this side; excluding them on the other side
+      // too is what makes the rule symmetric.
+      if (other.role === 'reserve') continue;
       if (seatedHere.has(other.memberId)) clashing.add(other.memberId);
     }
     for (const memberId of clashing) {

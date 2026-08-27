@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatRaceTime, parseRaceTime } from './dates';
-import { compareGroups, formatDelta, rankEntries } from './results';
+import { compareGroups, formatDelta, groupLabel, raceCountsByStage, rankEntries } from './results';
 import type { RaceEntry, RaceStage } from './types';
 
 let n = 0;
@@ -115,5 +115,67 @@ describe('race time parsing and formatting', () => {
     expect(parseRaceTime('abc')).toBeUndefined();
     expect(parseRaceTime('')).toBeUndefined();
     expect(parseRaceTime('1:2:3')).toBeUndefined();
+  });
+});
+
+describe('a NaN finish time', () => {
+  const entry = (id: string, timeMs?: number): RaceEntry => ({
+    id,
+    crewId: id,
+
+    stage: 'heat',
+    heat: 1,
+    timeMs,
+  });
+
+  it('does not take the win', () => {
+    // `typeof NaN === 'number'`, so the old guard let it sort to the front
+    // and pushed the crew that actually won down to second.
+    const ranked = rankEntries([entry('bad', NaN), entry('real', 120_000)]);
+
+    const winner = ranked.find((r) => r.placement === 1);
+    expect(winner?.entry.id).toBe('real');
+  });
+
+  it('is treated as no time at all', () => {
+    const ranked = rankEntries([entry('bad', NaN), entry('real', 120_000)]);
+
+    expect(ranked.find((r) => r.entry.id === 'bad')?.placement).toBeUndefined();
+  });
+});
+
+describe('groupLabel', () => {
+  it('leaves a lone race unnumbered', () => {
+    expect(groupLabel('heat', 1, 1)).toBe('Heat');
+    expect(groupLabel('semi', 1, 1)).toBe('Semi-final');
+    expect(groupLabel('final', 1, 1)).toBe('Final');
+  });
+
+  it('numbers semi-finals by how many semis there are', () => {
+    // Passing the heat count meant one heat plus two semis rendered both
+    // semis as "Semi-final" — two identical headings for different races.
+    expect(groupLabel('semi', 1, 2)).toBe('Semi-final 1');
+    expect(groupLabel('semi', 2, 2)).toBe('Semi-final 2');
+  });
+
+  it('letters the finals, as a regatta writes them', () => {
+    expect(groupLabel('final', 1, 2)).toBe('A Final');
+    expect(groupLabel('final', 2, 2)).toBe('B Final');
+  });
+});
+
+describe('raceCountsByStage', () => {
+  it('counts each stage separately', () => {
+    const e = (stage: RaceEntry['stage'], heat: number): RaceEntry => ({
+      id: `${stage}${heat}`,
+      crewId: 'c',
+
+      stage,
+      heat,
+    });
+
+    const counts = raceCountsByStage([e('heat', 1), e('heat', 2), e('heat', 3), e('semi', 1)]);
+
+    expect(counts).toEqual({ heat: 3, semi: 1, final: 0 });
   });
 });

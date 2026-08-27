@@ -1,4 +1,4 @@
-import { getBoatLayout, isBowHalf } from './boat';
+import { bowSternZone, getBoatLayout } from './boat';
 import type {
   BoatSize,
   ClubSettings,
@@ -87,8 +87,10 @@ export function computeBalance(
     if (p.assignment.seat.side === 'left') leftKg += kg;
     else rightKg += kg;
 
-    if (isBowHalf(p.assignment.seat.row, boatSize)) bowKg += kg;
-    else sternKg += kg;
+    // A middle row on an odd-rowed boat counts toward neither end.
+    const zone = bowSternZone(p.assignment.seat.row, boatSize);
+    if (zone === 'bow') bowKg += kg;
+    else if (zone === 'stern') sternKg += kg;
   }
 
   const totalKg = leftKg + rightKg;
