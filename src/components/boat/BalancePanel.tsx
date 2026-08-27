@@ -188,9 +188,14 @@ export function IssuesPanel({ issues }: { issues: Issue[] }) {
 export function ReservesStrip({
   reserves,
   onRemove,
+  selectedMemberName,
+  onTap,
 }: {
   reserves: { assignmentId: string; member: Member }[];
   onRemove: (assignmentId: string) => void;
+  /** Set while a paddler is selected for tap-to-place. */
+  selectedMemberName?: string;
+  onTap?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: roleDroppableId('reserve'),
@@ -209,6 +214,16 @@ export function ReservesStrip({
         <h2 className="text-sm font-semibold">Reserves</h2>
         <Badge>{reserves.length}</Badge>
       </div>
+      {selectedMemberName && onTap && (
+        <button
+          type="button"
+          onClick={onTap}
+          className="mb-2 w-full rounded-lg border border-brand-400 bg-brand-500/10 px-2 py-2
+            text-xs font-medium hover:bg-brand-500/20"
+        >
+          Move {selectedMemberName} to the reserves
+        </button>
+      )}
       {reserves.length === 0 ? (
         <p className="text-xs text-muted">Drag paddlers here to keep them with the crew.</p>
       ) : (

@@ -353,6 +353,10 @@ export function LineupPage() {
                 member,
               }))}
               onRemove={(assignmentId) => void applyChanges([{ op: 'delete', id: assignmentId }])}
+              selectedMemberName={
+                selectedMemberId ? membersById.get(selectedMemberId)?.firstName : undefined
+              }
+              onTap={() => placeSelected({ kind: 'role', role: 'reserve' })}
             />
           </div>
         </div>

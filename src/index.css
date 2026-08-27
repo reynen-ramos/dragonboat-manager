@@ -62,20 +62,26 @@
   }
 }
 
-@layer utilities {
-  .surface {
-    background: var(--surface-raised);
-    border-color: var(--border-subtle);
-  }
-  .surface-sunken {
-    background: var(--surface-sunken);
-  }
-  .text-muted {
-    color: var(--text-muted);
-  }
-  .border-subtle {
-    border-color: var(--border-subtle);
-  }
+/*
+ * `@utility`, not a plain class in `@layer utilities`. Tailwind v4 only builds
+ * variants for utilities registered this way — as hand-written classes these
+ * worked bare but every `hover:` and `dark:` use of them compiled to nothing.
+ */
+@utility surface {
+  background: var(--surface-raised);
+  border-color: var(--border-subtle);
+}
+
+@utility surface-sunken {
+  background: var(--surface-sunken);
+}
+
+@utility text-muted {
+  color: var(--text-muted);
+}
+
+@utility border-subtle {
+  border-color: var(--border-subtle);
 }
 
 @media print {
