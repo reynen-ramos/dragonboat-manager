@@ -131,8 +131,11 @@ export function computeBalance(
  *     preference violation rather than silently hidden.
  *  3. Paddlers who can do either side fill the remaining seats largest-first,
  *     always going to whichever side is currently lighter.
- *  4. Within a side, heavier paddlers are drawn toward the middle rows (the
- *     engine room), which also flattens fore/aft trim.
+ *  4. A paddler with preferred zones gets the most central free row inside
+ *     one of them — a stated preference beats the trim heuristic for the
+ *     paddler who stated it, and quietly falls back when the zone is full.
+ *  5. Within a side, everyone else is drawn toward the middle rows (the
+ *     engine room), heaviest first, which also flattens fore/aft trim.
  *
  * Returns the full seating for every movable paddler, not just the changes.
  */
@@ -140,7 +143,7 @@ export function planBalancedSeating(
   seated: SeatedPaddler[],
   boatSize: BoatSize,
 ): SeatPlan[] {
-  const { rows } = getBoatLayout(boatSize);
+  const { rows, zoneForRow } = getBoatLayout(boatSize);
 
   const pinned = seated.filter((p) => p.assignment.pinned);
   const movable = seated.filter((p) => !p.assignment.pinned);
@@ -212,14 +215,26 @@ export function planBalancedSeating(
       .filter((row) => !takenRows.has(row))
       .sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre));
 
-    chosen[side]
-      .slice()
-      .sort(byWeightDesc)
-      .forEach((paddler, i) => {
-        const row = freeRows[i];
-        if (row === undefined) return;
-        plan.push({ assignmentId: paddler.assignment.id, seat: { row, side } });
-      });
+    const ordered = chosen[side].slice().sort(byWeightDesc);
+    const free = [...freeRows];
+
+    // Zone preferences claim their rows first; `free` is centre-out sorted,
+    // so a preference still lands as centrally as its zone allows.
+    const claimed = new Map<string, number>();
+    for (const paddler of ordered) {
+      const zones = paddler.member.preferredZones;
+      if (!zones || zones.length === 0) continue;
+      const index = free.findIndex((row) => zones.includes(zoneForRow(row)));
+      if (index === -1) continue; // zone full — falls into the general pool
+      claimed.set(paddler.assignment.id, free[index]);
+      free.splice(index, 1);
+    }
+
+    for (const paddler of ordered) {
+      const row = claimed.get(paddler.assignment.id) ?? free.shift();
+      if (row === undefined) continue;
+      plan.push({ assignmentId: paddler.assignment.id, seat: { row, side } });
+    }
   }
 
   return plan;

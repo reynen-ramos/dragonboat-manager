@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, SlideOver } from '@/components/ui/Dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
-import type { Gender, Member, MemberStatus, SidePreference } from '@/domain/types';
+import type { Gender, Member, MemberStatus, SeatZone, SidePreference } from '@/domain/types';
 import { useCreateMember, useUpdateMember } from '@/queries/hooks';
 import { GENDER_LABEL, SIDE_PREFERENCE_LABEL } from '@/utils/format';
+import { ZONE_LABELS } from '@/domain/boat';
+import { cn } from '@/utils/cn';
 
 type Draft = Omit<Member, 'id'>;
 
@@ -133,6 +135,40 @@ export function MemberForm({
               )}
             </Field>
           </div>
+
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium text-muted">
+              Preferred zones{' '}
+              <span className="font-normal">— where auto-placement tries to seat them</span>
+            </legend>
+            <div className="flex gap-2">
+              {(Object.entries(ZONE_LABELS) as [SeatZone, string][]).map(([zone, label]) => {
+                const active = draft.preferredZones?.includes(zone) ?? false;
+                return (
+                  <button
+                    key={zone}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      const current = draft.preferredZones ?? [];
+                      const next = active
+                        ? current.filter((z) => z !== zone)
+                        : [...current, zone];
+                      set('preferredZones', next.length > 0 ? next : undefined);
+                    }}
+                    className={cn(
+                      'flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-colors',
+                      active
+                        ? 'border-brand-600 bg-brand-50 dark:bg-brand-900'
+                        : 'border-subtle hover:surface-sunken',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Gender" hint="Determines crew class eligibility">

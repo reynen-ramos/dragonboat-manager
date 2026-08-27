@@ -1,5 +1,5 @@
 import { todayIso } from '@/domain/dates';
-import type { Gender, Member, MemberStatus, SidePreference } from '@/domain/types';
+import type { Gender, Member, MemberStatus, SeatZone, SidePreference } from '@/domain/types';
 import { parseCsvDate } from './csvDate';
 import { parseCsvRows } from './parseCsvRows';
 
@@ -21,6 +21,7 @@ export const CSV_COLUMNS = [
   'dateOfBirth',
   'weightKg',
   'sidePreference',
+  'preferredZones',
   'canDrum',
   'canSteer',
   'status',
@@ -50,6 +51,11 @@ const HEADER_ALIASES: Record<string, (typeof CSV_COLUMNS)[number]> = {
   sidepreference: 'sidePreference',
   side: 'sidePreference',
   paddlingside: 'sidePreference',
+  preferredzones: 'preferredZones',
+  zones: 'preferredZones',
+  zone: 'preferredZones',
+  seatzone: 'preferredZones',
+  seatzones: 'preferredZones',
   candrum: 'canDrum',
   drummer: 'canDrum',
   cansteer: 'canSteer',
@@ -87,6 +93,25 @@ function parseSide(raw: string): SidePreference {
   if (value.startsWith('l') || value.startsWith('p')) return 'left'; // left / port
   if (value.startsWith('r') || value.startsWith('s')) return 'right'; // right / starboard
   return 'both';
+}
+
+const ZONE_WORDS: Record<string, SeatZone> = {
+  stroke: 'stroke',
+  strokes: 'stroke',
+  front: 'stroke',
+  timing: 'stroke',
+  engine: 'engine',
+  middle: 'engine',
+  rockets: 'rockets',
+  rocket: 'rockets',
+  back: 'rockets',
+};
+
+/** "stroke/engine", "Engine room", "back" — forgiving, like every import here. */
+function parseZones(raw: string): SeatZone[] | undefined {
+  const words = raw.toLowerCase().split(/[^a-z]+/);
+  const zones = [...new Set(words.map((w) => ZONE_WORDS[w]).filter(Boolean))];
+  return zones.length > 0 ? zones : undefined;
 }
 
 function parseStatus(raw: string): MemberStatus {
@@ -188,6 +213,10 @@ export function parseMembersCsv(text: string, today = todayIso()): CsvImportResu
       }
     }
 
+    if (cells.preferredZones?.trim()) {
+      const zones = parseZones(cells.preferredZones);
+      if (zones) member.preferredZones = zones;
+    }
     if (cells.email?.trim()) member.email = cells.email.trim();
     if (cells.phone?.trim()) member.phone = cells.phone.trim();
     if (cells.emergencyContactName?.trim())
@@ -240,6 +269,9 @@ export function membersToCsv(members: Member[]): string {
     CSV_COLUMNS.map((column) => {
       const value = member[column];
       if (typeof value === 'boolean') return value ? 'yes' : 'no';
+      // preferredZones: joined with '/' so the cell needs no quoting and the
+      // importer's forgiving splitter reads it straight back.
+      if (Array.isArray(value)) return escapeCell(value.join('/'));
       return escapeCell(value);
     }).join(','),
   );

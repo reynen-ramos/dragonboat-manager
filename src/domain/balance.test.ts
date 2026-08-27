@@ -216,3 +216,59 @@ describe('planBalancedSeating', () => {
     expect(heaviest.assignment.seat.row).toBeLessThanOrEqual(8);
   });
 });
+
+describe('preferred zones', () => {
+  it('gives a stated preference its zone even for a light paddler', () => {
+    // Rows 1-2 are the stroke pair in a 20s boat. Without the preference the
+    // lightest paddler is pushed to the ends by the heaviest-to-centre rule.
+    const seated = [
+      ...[1, 2, 3, 4, 5].map((row) =>
+        makeSeated({ row, side: 'left' }, { weightKg: 90 + row, sidePreference: 'both' }),
+      ),
+      makeSeated(
+        { row: 6, side: 'left' },
+        { weightKg: 55, sidePreference: 'both', preferredZones: ['stroke'] },
+      ),
+    ];
+    const after = applyPlan(seated, 20);
+    const light = after.find((p) => p.member.weightKg === 55)!;
+
+    expect([1, 2]).toContain(light.assignment.seat.row);
+  });
+
+  it('falls back to the general pool when the preferred zone is pinned full', () => {
+    const seated = [
+      // Both stroke rows pinned.
+      makeSeated({ row: 1, side: 'left' }, { weightKg: 80 }, { pinned: true }),
+      makeSeated({ row: 2, side: 'left' }, { weightKg: 80 }, { pinned: true }),
+      // Fixed to the left, or the planner would simply give them the free
+      // stroke pair on the right — which is the preference working, not failing.
+      makeSeated(
+        { row: 5, side: 'left' },
+        { weightKg: 70, sidePreference: 'left', preferredZones: ['stroke'] },
+      ),
+    ];
+    const plan = planBalancedSeating(seated, 20);
+    const placed = plan.find((p) => p.seat.side === 'left');
+
+    expect(placed).toBeDefined();
+    expect([1, 2]).not.toContain(placed!.seat.row);
+  });
+
+  it('keeps drawing unpreferring paddlers toward the engine room', () => {
+    const seated = [
+      makeSeated(
+        { row: 1, side: 'left' },
+        { weightKg: 95, sidePreference: 'both', preferredZones: ['rockets'] },
+      ),
+      makeSeated({ row: 2, side: 'left' }, { weightKg: 90, sidePreference: 'both' }),
+    ];
+    const after = applyPlan(seated, 20);
+
+    const rockets = after.find((p) => p.member.preferredZones?.length)!;
+    const other = after.find((p) => !p.member.preferredZones)!;
+    expect(rockets.assignment.seat.row).toBeGreaterThanOrEqual(9);
+    // The unpreferring paddler still takes the most central row available.
+    expect([5, 6]).toContain(other.assignment.seat.row);
+  });
+});
