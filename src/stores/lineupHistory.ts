@@ -44,7 +44,11 @@ export const useLineupHistory = create<LineupHistoryState>((set, get) => ({
       crewId,
       // Any new edit invalidates the redo branch, as in every editor.
       future: [],
-      past: [...state.past, snapshot].slice(-MAX_DEPTH),
+      // A record for a different crew must not extend the previous crew's
+      // stack — undo would then write that crew's lineup into this one. The
+      // page's mount effect makes that unreachable today, but the invariant
+      // belongs to the store, not to its caller's cleanup ordering.
+      past: [...(state.crewId === crewId ? state.past : []), snapshot].slice(-MAX_DEPTH),
     })),
 
   undo: (current) => {

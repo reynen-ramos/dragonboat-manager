@@ -159,11 +159,12 @@ function useInvalidatingMutation<TArgs, TResult>(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => {
-      for (const key of invalidate) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+    // Returned, not fired-and-forgotten: React Query holds `mutateAsync`
+    // unresolved until this settles, so a caller that awaits a write reads the
+    // refetched cache, not the pre-write one. Undo snapshots depend on that —
+    // without it, two rapid edits both capture the same stale lineup.
+    onSuccess: () =>
+      Promise.all(invalidate.map((key) => queryClient.invalidateQueries({ queryKey: key }))),
   });
 }
 
