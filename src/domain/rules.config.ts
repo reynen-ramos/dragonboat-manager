@@ -30,3 +30,12 @@ export const BOAT_SIZES: BoatSize[] = [10, 20];
 
 /** Common regatta distances, offered as suggestions rather than a fixed list. */
 export const COMMON_DISTANCES_M = [200, 500, 1000, 2000];
+
+/**
+ * The stored-snapshot format this build writes.
+ *
+ * Lives here rather than in `src/data` so the domain's demo snapshot can stamp
+ * it without depending on storage. `src/data/migrate.ts` re-exports it as
+ * `CURRENT_VERSION` and owns the migration steps.
+ */
+export const SNAPSHOT_VERSION = 1;

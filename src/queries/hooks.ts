@@ -1,10 +1,7 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type UseMutationResult,
-} from '@tanstack/react-query';
-import { adapter } from '@/data';
+import { useEffect } from 'react';
+import { type UseMutationResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adapter, subscribeToExternalChanges, takeReadWarnings } from '@/data';
+import { useNotifications } from '@/stores/notifications';
 import {
   deleteCategoryCascade,
   deleteCrewCascade,
@@ -351,3 +348,27 @@ export const useImportSnapshot = () =>
   useInvalidatingMutation((snapshot: Snapshot) => adapter.admin.importSnapshot(snapshot), ALL_KEYS);
 
 export const exportSnapshot = () => adapter.admin.exportSnapshot();
+
+/**
+ * Reloads every query when another tab replaces the database.
+ *
+ * Without this a second tab keeps rendering data that no longer exists on
+ * disk, and — because every write persists the whole snapshot — its next save
+ * overwrites everything the other tab changed. `refetchOnWindowFocus` does not
+ * cover it: that refetch was served from the same stale in-memory cache.
+ */
+export function useExternalStorageSync() {
+  const queryClient = useQueryClient();
+  useEffect(
+    () => subscribeToExternalChanges(() => void queryClient.invalidateQueries()),
+    [queryClient],
+  );
+}
+
+/** Surfaces anything the last read had to skip, once, at startup. */
+export function useStorageWarnings() {
+  const notify = useNotifications((s) => s.notify);
+  useEffect(() => {
+    for (const warning of takeReadWarnings()) notify(warning);
+  }, [notify]);
+}

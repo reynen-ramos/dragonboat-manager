@@ -1,4 +1,4 @@
-import { DEFAULT_CLUB_SETTINGS } from './rules.config';
+import { DEFAULT_CLUB_SETTINGS, SNAPSHOT_VERSION } from './rules.config';
 import type {
   Assignment,
   AssignmentInput,
@@ -172,7 +172,7 @@ function buildAvailability(): Availability[] {
 
 export function buildDemoSnapshot(): Snapshot {
   return {
-    version: 1,
+    version: SNAPSHOT_VERSION,
     exportedAt: '2026-08-01T09:00:00.000Z',
     members: buildMembers(),
     events: [

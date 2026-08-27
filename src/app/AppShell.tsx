@@ -2,6 +2,7 @@ import { CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Toaster } from '@/components/ui/Toaster';
+import { useExternalStorageSync, useStorageWarnings } from '@/queries/hooks';
 import { cn } from '@/utils/cn';
 
 /**
@@ -19,6 +20,9 @@ const NAV = [
 ];
 
 export function AppShell() {
+  useExternalStorageSync();
+  useStorageWarnings();
+
   return (
     <div className="min-h-dvh sm:flex">
       <Sidebar />
