@@ -1,6 +1,7 @@
 import { ArrowLeft, Plus, Timer, Trash2, Trophy } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { AdvanceDialog } from '@/components/races/AdvanceDialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
@@ -129,7 +130,13 @@ function CategoryResults({ category }: { category: Category }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{categoryName(category)}</h2>
         {crewList.length > 0 && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <AdvanceDialog
+              entries={entries}
+              crewName={(crewId) => crewList.find((c) => c.id === crewId)?.name ?? 'A crew'}
+              pending={createEntry.isPending}
+              onConfirm={(rows) => rows.forEach((row) => createEntry.mutate(row))}
+            />
             {(['heat', 'semi', 'final'] as RaceStage[]).map((stage) => (
               <Button
                 key={stage}

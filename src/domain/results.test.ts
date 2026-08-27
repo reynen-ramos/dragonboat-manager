@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatRaceTime, parseRaceTime } from './dates';
-import { compareGroups, formatDelta, groupLabel, raceCountsByStage, rankEntries } from './results';
+import { compareGroups, formatDelta, groupLabel, planAdvancement, raceCountsByStage, rankEntries } from './results';
 import type { RaceEntry, RaceStage } from './types';
 
 let n = 0;
@@ -177,5 +177,96 @@ describe('raceCountsByStage', () => {
     const counts = raceCountsByStage([e('heat', 1), e('heat', 2), e('heat', 3), e('semi', 1)]);
 
     expect(counts).toEqual({ heat: 3, semi: 1, final: 0 });
+  });
+});
+
+describe('planAdvancement', () => {
+  const e = (
+    crewId: string,
+    stage: RaceEntry['stage'],
+    heat: number,
+    timeMs?: number,
+  ): RaceEntry => ({ id: `${crewId}-${stage}-${heat}`, crewId, stage, heat, timeMs });
+
+  const heats = [
+    e('slow', 'heat', 1, 130_000),
+    e('fastest', 'heat', 2, 118_000),
+    e('mid', 'heat', 1, 124_000),
+    e('quick', 'heat', 2, 120_000),
+    e('untimed', 'heat', 1),
+  ];
+
+  const plan = (
+    all: RaceEntry[],
+    opts: { advancing: number; races: number },
+    to: RaceEntry['stage'] = 'final',
+  ) => {
+    const result = planAdvancement(all, 'heat', to, opts);
+    if ('blocked' in result) throw new Error(result.blocked);
+    return result;
+  };
+
+  it('advances the fastest crews across heats, not per heat', () => {
+    const { advancingCrewIds } = plan(heats, { advancing: 3, races: 1 });
+
+    expect(advancingCrewIds).toEqual(['fastest', 'quick', 'mid']);
+  });
+
+  it('reports crews it cannot rank instead of dropping them silently', () => {
+    const { excludedUntimed } = plan(heats, { advancing: 3, races: 1 });
+
+    expect(excludedUntimed).toEqual(['untimed']);
+  });
+
+  it('refuses to create a stage that already has entries', () => {
+    const withFinal = [...heats, e('fastest', 'final', 1)];
+
+    expect(planAdvancement(withFinal, 'heat', 'final', { advancing: 3, races: 1 })).toEqual({
+      blocked: 'TARGET_HAS_ENTRIES',
+    });
+  });
+
+  it('refuses when nothing has a time yet', () => {
+    expect(planAdvancement([e('a', 'heat', 1)], 'heat', 'semi', { advancing: 3, races: 1 })).toEqual(
+      { blocked: 'NO_TIMED_ENTRIES' },
+    );
+  });
+
+  it('a tie exactly at the cut advances both crews', () => {
+    const tied = [
+      e('first', 'heat', 1, 118_000),
+      e('second', 'heat', 1, 120_000),
+      e('also-second', 'heat', 2, 120_000),
+    ];
+    const { advancingCrewIds } = plan(tied, { advancing: 2, races: 1 });
+
+    expect(advancingCrewIds).toEqual(['first', 'second', 'also-second']);
+  });
+
+  it('a crew with two source entries advances once, on its best time', () => {
+    const doubled = [e('dup', 'heat', 1, 125_000), e('dup', 'heat', 2, 119_000), ...heats];
+    const { advancingCrewIds, entries } = plan(doubled, { advancing: 2, races: 1 });
+
+    expect(advancingCrewIds).toEqual(['fastest', 'dup']);
+    expect(entries.filter((x) => x.crewId === 'dup')).toHaveLength(1);
+  });
+
+  it('seeds two semi-finals snake-style so they are comparably strong', () => {
+    const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => e(id, 'heat', 1, 118_000 + i * 1000));
+    const { entries } = plan(six, { advancing: 6, races: 2 }, 'semi');
+
+    const inRace = (heat: number) => entries.filter((x) => x.heat === heat).map((x) => x.crewId);
+    // Snake over seeds 1..6: A B B A A B.
+    expect(inRace(1)).toEqual(['a', 'd', 'e']);
+    expect(inRace(2)).toEqual(['b', 'c', 'f']);
+  });
+
+  it('assigns lanes 1..k within each race in seed order', () => {
+    const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => e(id, 'heat', 1, 118_000 + i * 1000));
+    const { entries } = plan(six, { advancing: 6, races: 2 }, 'semi');
+
+    for (const heat of [1, 2]) {
+      expect(entries.filter((x) => x.heat === heat).map((x) => x.lane)).toEqual([1, 2, 3]);
+    }
   });
 });
