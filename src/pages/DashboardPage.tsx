@@ -1,9 +1,11 @@
-import { CalendarDays, Sparkles, Users } from 'lucide-react';
+import { CalendarDays, HardDriveDownload, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate, todayIso } from '@/domain/dates';
-import { useEvents, useLoadDemoClub, useMembers } from '@/queries/hooks';
+import { exportSnapshot, useEvents, useLoadDemoClub, useMembers } from '@/queries/hooks';
+import { backupDue, useBackupReminder } from '@/stores/backupReminder';
+import { downloadTextFile } from '@/utils/download';
 import { categoryName, pluralise } from '@/utils/format';
 import { useCategories } from '@/queries/hooks';
 
@@ -62,6 +64,8 @@ export function DashboardPage() {
           'upcoming event',
         )}`}
       />
+
+      <BackupNudge />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="p-5">
@@ -140,5 +144,52 @@ function EventRow({ eventId, name, date }: { eventId: string; name: string; date
         ›
       </span>
     </Link>
+  );
+}
+
+/**
+ * The dismissible reminder that the club lives in one browser.
+ *
+ * Rendered only past the empty state, so there is data worth losing. Export
+ * happens right here — a nudge that merely links to Settings is a chore; one
+ * that finishes the job in a tap builds the habit it exists for.
+ */
+function BackupNudge() {
+  const lastExportAt = useBackupReminder((s) => s.lastExportAt);
+  const snoozedUntil = useBackupReminder((s) => s.snoozedUntil);
+  const markExported = useBackupReminder((s) => s.markExported);
+  const snooze = useBackupReminder((s) => s.snooze);
+
+  if (!backupDue(lastExportAt, snoozedUntil, new Date())) return null;
+
+  const exportNow = async () => {
+    downloadTextFile(
+      `dragonboat-backup-${todayIso()}.json`,
+      JSON.stringify(await exportSnapshot(), null, 2),
+      'application/json',
+    );
+    markExported();
+  };
+
+  return (
+    <Card className="mb-4 flex flex-wrap items-center gap-3 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+      <HardDriveDownload
+        className="size-5 shrink-0 text-amber-700 dark:text-amber-300"
+        aria-hidden="true"
+      />
+      <p className="min-w-0 flex-1 text-sm text-amber-900 dark:text-amber-100">
+        {lastExportAt
+          ? `Last backup ${formatDate(lastExportAt.slice(0, 10))}. Everything here lives in this browser only.`
+          : 'This club has never been backed up. Everything here lives in this browser only — clearing its data deletes the club.'}
+      </p>
+      <div className="flex shrink-0 gap-2">
+        <Button size="sm" variant="primary" onClick={() => void exportNow()}>
+          Export backup
+        </Button>
+        <Button size="sm" variant="ghost" onClick={snooze}>
+          Remind me in a week
+        </Button>
+      </div>
+    </Card>
   );
 }
