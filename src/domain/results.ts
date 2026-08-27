@@ -111,3 +111,82 @@ export function formatDelta(deltaMs: number | undefined): string {
   if (deltaMs == null || deltaMs === 0) return '';
   return `+${(deltaMs / 1000).toFixed(2)}`;
 }
+
+/** What advancing the fastest crews into the next stage would create. */
+export interface AdvancementPlan {
+  entries: Omit<RaceEntry, 'id'>[];
+  advancingCrewIds: string[];
+  /** Crews in the source stage with no finite time — they cannot be ranked. */
+  excludedUntimed: string[];
+}
+
+export type AdvancementBlocked = {
+  blocked: 'TARGET_HAS_ENTRIES' | 'NO_TIMED_ENTRIES';
+};
+
+/**
+ * Proposes the next stage's entries from a finished one.
+ *
+ * Ranking is by time across all races of the source stage — the dragon boat
+ * convention, where lanes and draws vary too much for place-per-heat to be
+ * fair. Two refinements a plain top-N would get wrong:
+ *
+ *  - A tie exactly at the cut advances both crews rather than letting sort
+ *    order pick a loser.
+ *  - A crew somehow holding two source entries advances once, on its best.
+ *
+ * Multiple target races are seeded snake-style (1st to race A, 2nd and 3rd to
+ * race B, 4th back to A …) so the two semis are of comparable strength.
+ * Lanes are assigned in seed order within each race; a coach can re-lane by
+ * hand where the draw says otherwise.
+ */
+export function planAdvancement(
+  all: RaceEntry[],
+  from: RaceStage,
+  to: RaceStage,
+  opts: { advancing: number; races: number },
+): AdvancementPlan | AdvancementBlocked {
+  if (all.some((e) => e.stage === to)) return { blocked: 'TARGET_HAS_ENTRIES' };
+
+  const source = all.filter((e) => e.stage === from);
+  const timed = source.filter((e): e is RaceEntry & { timeMs: number } =>
+    Number.isFinite(e.timeMs),
+  );
+  if (timed.length === 0) return { blocked: 'NO_TIMED_ENTRIES' };
+
+  const excludedUntimed = [
+    ...new Set(
+      source
+        .filter((e) => !Number.isFinite(e.timeMs))
+        .map((e) => e.crewId)
+        .filter((id) => !timed.some((t) => t.crewId === id)),
+    ),
+  ];
+
+  // Best time per crew, fastest first.
+  const bestByCrew = new Map<string, RaceEntry & { timeMs: number }>();
+  for (const entry of timed) {
+    const held = bestByCrew.get(entry.crewId);
+    if (!held || entry.timeMs < held.timeMs) bestByCrew.set(entry.crewId, entry);
+  }
+  const ranked = [...bestByCrew.values()].sort((a, b) => a.timeMs - b.timeMs);
+
+  let cut = Math.min(Math.max(1, opts.advancing), ranked.length);
+  while (cut < ranked.length && ranked[cut].timeMs === ranked[cut - 1].timeMs) cut++;
+  const advancing = ranked.slice(0, cut);
+
+  const races = Math.max(1, Math.min(opts.races, advancing.length));
+  const snake = (seed: number): number => {
+    const cycle = seed % (2 * races);
+    return cycle < races ? cycle : 2 * races - 1 - cycle;
+  };
+
+  const laneCount = Array.from({ length: races }, () => 0);
+  const entries = advancing.map((entry, seed) => {
+    const race = snake(seed);
+    laneCount[race] += 1;
+    return { crewId: entry.crewId, stage: to, heat: race + 1, lane: laneCount[race] };
+  });
+
+  return { entries, advancingCrewIds: advancing.map((e) => e.crewId), excludedUntimed };
+}
