@@ -77,7 +77,7 @@ export function BalancePanel({
   );
 }
 
-function SeeSaw({
+export function SeeSaw({
   label,
   leftLabel,
   rightLabel,
@@ -99,25 +99,45 @@ function SeeSaw({
   const total = leftKg + rightKg;
   const leftPercent = total === 0 ? 50 : (leftKg / total) * 100;
 
+  const heavierSide = deltaKg > 0 ? leftLabel : rightLabel;
+  const reading =
+    deltaKg === 0
+      ? 'even'
+      : `${Math.abs(Math.round(deltaKg))}kg ${heavierSide} (${(fraction * 100).toFixed(1)}%)`;
+
+  // The tolerance verdict was previously carried by the text colour alone, and
+  // the sentence read identically either way — so it did not reach a screen
+  // reader, a colour-blind user, or a phone in bright sun on a dock.
+  const verdict = withinTolerance ? 'balanced' : 'out of tolerance';
+
   return (
     <div>
-      <div className="mb-1 flex items-baseline justify-between text-xs">
+      <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
         <span className="text-muted">{label}</span>
         <span
           className={cn(
-            'tabular font-medium',
+            'tabular flex items-center gap-1 font-medium',
             withinTolerance ? 'text-emerald-600' : 'text-amber-600',
           )}
         >
-          {deltaKg === 0
-            ? 'even'
-            : `${Math.abs(Math.round(deltaKg))}kg ${deltaKg > 0 ? leftLabel : rightLabel} (${(
-                fraction * 100
-              ).toFixed(1)}%)`}
+          {withinTolerance ? (
+            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          ) : (
+            <AlertTriangle className="size-3.5" aria-hidden="true" />
+          )}
+          {reading}
         </span>
       </div>
 
-      <div className="relative h-2.5 overflow-hidden rounded-full surface-sunken">
+      <div
+        role="meter"
+        aria-label={`${label} balance`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(fraction * 1000) / 10}
+        aria-valuetext={`${reading}, ${verdict}`}
+        className="relative h-2.5 overflow-hidden rounded-full surface-sunken"
+      >
         <div
           className={cn(
             'h-full transition-all',
