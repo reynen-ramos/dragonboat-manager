@@ -94,6 +94,33 @@ describe('seat counts', () => {
     expect(codes(issues)).toContain('SEAT_COUNT_OVER');
     expect(codes(issues)).toContain('DUPLICATE_SEAT');
   });
+
+  it('does not count a paddler with no seat toward the seat count', () => {
+    // A crew can hold a paddler who was never given a seat — the boat has an
+    // empty bench, but nothing in the roster shows it. Counting them as seated
+    // certifies a short crew as ready to race.
+    const { assignments, members } = fullCrew(10);
+    const withUnseated = assignments.map((a) =>
+      a.id === 'a0' ? { ...a, seat: undefined } : a,
+    );
+    const issues = run({ category: category(10, 'open'), assignments: withUnseated, members });
+
+    expect(codes(issues)).toContain('SEAT_COUNT_SHORT');
+    expect(issues.find((i) => i.code === 'SEAT_COUNT_SHORT')?.message).toContain('9 of 10');
+  });
+
+  it('names each paddler left without a seat', () => {
+    const { assignments, members } = fullCrew(10);
+    const withUnseated = assignments.map((a) =>
+      a.id === 'a0' || a.id === 'a1' ? { ...a, seat: undefined } : a,
+    );
+    const issues = run({ category: category(10, 'open'), assignments: withUnseated, members });
+
+    const unseated = issues.filter((i) => i.code === 'PADDLER_NOT_SEATED');
+    expect(unseated).toHaveLength(2);
+    expect(unseated[0].level).toBe('error');
+    expect(unseated.map((i) => i.memberId)).toEqual(['p0', 'p1']);
+  });
 });
 
 describe('drummer and cox', () => {

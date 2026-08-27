@@ -2,8 +2,8 @@ import { Download, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
-import { Field, Input } from '@/components/ui/Field';
-import { Card, PageHeader } from '@/components/ui/misc';
+import { NumberField } from '@/components/ui/NumberField';
+import { Card, PageHeader, Spinner } from '@/components/ui/misc';
 import type { BoatSize, Snapshot } from '@/domain/types';
 import {
   exportSnapshot,
@@ -12,10 +12,15 @@ import {
   useLoadDemoClub,
   useSaveSettings,
   useSettings,
+  useSettingsQuery,
 } from '@/queries/hooks';
 import { downloadTextFile } from '@/utils/csv';
 
+/** A fraction stored as 0.03 is shown as 3, without a float tail. */
+const asPercent = (fraction: number) => Math.round(fraction * 1000) / 10;
+
 export function SettingsPage() {
+  const settingsQuery = useSettingsQuery();
   const settings = useSettings();
   const saveSettings = useSaveSettings();
   const loadDemo = useLoadDemoClub();
@@ -45,6 +50,10 @@ export function SettingsPage() {
     }
   };
 
+  // Without this, a keystroke landing before the query resolves would save the
+  // defaults `useSettings` substitutes, over whatever the club had stored.
+  if (settingsQuery.isPending) return <Spinner />;
+
   return (
     <>
       <PageHeader title="Settings" description="Rules and thresholds used across the app." />
@@ -57,18 +66,14 @@ export function SettingsPage() {
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {([10, 20] as BoatSize[]).map((boatSize) => (
-              <Field key={boatSize} label={`Mixed ${boatSize}s — minimum women`}>
-                {(id) => (
-                  <Input
-                    id={id}
-                    type="number"
-                    min={0}
-                    max={boatSize}
-                    value={settings.minWomenMixed[boatSize]}
-                    onChange={(e) => setMinWomen(boatSize, Number(e.target.value))}
-                  />
-                )}
-              </Field>
+              <NumberField
+                key={boatSize}
+                label={`Mixed ${boatSize}s — minimum women`}
+                value={settings.minWomenMixed[boatSize]}
+                min={0}
+                max={boatSize}
+                onCommit={(value) => setMinWomen(boatSize, value)}
+              />
             ))}
           </div>
         </Card>
@@ -80,32 +85,24 @@ export function SettingsPage() {
             crew weight.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Field label="Left / right" hint="Default 3%">
-              {(id) => (
-                <Input
-                  id={id}
-                  type="number"
-                  min={0}
-                  max={25}
-                  step={0.5}
-                  value={Math.round(settings.sideBalanceTolerance * 1000) / 10}
-                  onChange={(e) => setTolerance('sideBalanceTolerance', Number(e.target.value))}
-                />
-              )}
-            </Field>
-            <Field label="Bow / stern" hint="Default 5%">
-              {(id) => (
-                <Input
-                  id={id}
-                  type="number"
-                  min={0}
-                  max={25}
-                  step={0.5}
-                  value={Math.round(settings.bowSternBalanceTolerance * 1000) / 10}
-                  onChange={(e) => setTolerance('bowSternBalanceTolerance', Number(e.target.value))}
-                />
-              )}
-            </Field>
+            <NumberField
+              label="Left / right"
+              hint="Default 3%"
+              value={asPercent(settings.sideBalanceTolerance)}
+              min={0}
+              max={25}
+              step={0.5}
+              onCommit={(value) => setTolerance('sideBalanceTolerance', value)}
+            />
+            <NumberField
+              label="Bow / stern"
+              hint="Default 5%"
+              value={asPercent(settings.bowSternBalanceTolerance)}
+              min={0}
+              max={25}
+              step={0.5}
+              onCommit={(value) => setTolerance('bowSternBalanceTolerance', value)}
+            />
           </div>
         </Card>
 

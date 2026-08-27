@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { applyChanges, planDrop } from './seating';
-import type { Assignment } from './types';
+import type { Assignment, PaddlerAssignment } from './types';
 
 const CREW = 'crew-1';
 
-const seated = (id: string, memberId: string, row: number, side: 'left' | 'right'): Assignment => ({
+const seated = (
+  id: string,
+  memberId: string,
+  row: number,
+  side: 'left' | 'right',
+): PaddlerAssignment => ({
   id,
   crewId: CREW,
   memberId,
@@ -97,7 +102,7 @@ describe('moving a paddler already in the boat', () => {
   });
 
   it('drops the pin when a pinned paddler leaves their seat', () => {
-    const pinned: Assignment = { ...seated('a1', 'm1', 4, 'left'), pinned: true };
+    const pinned: PaddlerAssignment = { ...seated('a1', 'm1', 4, 'left'), pinned: true };
     const after = drop([pinned], { memberId: 'm1', assignmentId: 'a1' }, { kind: 'role', role: 'cox' });
 
     expect(after[0]).toMatchObject({ role: 'cox', pinned: undefined });

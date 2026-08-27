@@ -34,7 +34,27 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, './src') },
   },
   test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // Two projects, so the domain layer keeps running without a DOM. That is not
+    // an optimisation — it is what stops a browser API from quietly reaching
+    // `src/domain`, which the architecture requires to stay portable.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'domain',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'ui',
+          environment: 'jsdom',
+          include: ['src/**/*.test.tsx'],
+          setupFiles: ['./src/test/setup.ts'],
+        },
+      },
+    ],
   },
 });

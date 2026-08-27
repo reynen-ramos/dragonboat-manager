@@ -2,7 +2,15 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Drum, Pin, Ship } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { getBoatLayout, seatLabel, ZONE_LABELS } from '@/domain/boat';
-import type { Assignment, BoatSize, Member, SeatPosition, SeatZone, Side } from '@/domain/types';
+import type {
+  Assignment,
+  BoatSize,
+  Member,
+  PaddlerAssignment,
+  SeatPosition,
+  SeatZone,
+  Side,
+} from '@/domain/types';
 import { cn } from '@/utils/cn';
 import { fullName } from '@/utils/format';
 import {
@@ -31,9 +39,14 @@ export interface SeatOccupant {
   doubleBooked: boolean;
 }
 
+/** An occupant the caller has already resolved to a seat. */
+export interface SeatedOccupant extends SeatOccupant {
+  assignment: PaddlerAssignment;
+}
+
 export interface BoatViewProps {
   boatSize: BoatSize;
-  occupantAt: (seat: SeatPosition) => SeatOccupant | undefined;
+  occupantAt: (seat: SeatPosition) => SeatedOccupant | undefined;
   drummer?: SeatOccupant;
   cox?: SeatOccupant;
   onTogglePin?: (assignment: Assignment) => void;
@@ -139,7 +152,7 @@ function BoatRow({
   row: number;
   zone: SeatZone;
   showZoneLabel: boolean;
-  occupantAt: (seat: SeatPosition) => SeatOccupant | undefined;
+  occupantAt: (seat: SeatPosition) => SeatedOccupant | undefined;
   onTogglePin?: (assignment: Assignment) => void;
   highlighted: boolean;
   onSeatTap?: (seat: SeatPosition) => void;
@@ -181,7 +194,7 @@ function Seat({
   onTap,
 }: {
   seat: SeatPosition;
-  occupant?: SeatOccupant;
+  occupant?: SeatedOccupant;
   onTogglePin?: (assignment: Assignment) => void;
   highlighted: boolean;
   onTap?: (seat: SeatPosition) => void;
@@ -200,7 +213,15 @@ function Seat({
       )}
     >
       {occupant ? (
-        <SeatOccupantView occupant={occupant} onTogglePin={onTogglePin} />
+        <>
+          <SeatOccupantView occupant={occupant} onTogglePin={onTogglePin} />
+          {highlighted && onTap && (
+            <PlaceHereOverlay
+              onClick={() => onTap(seat)}
+              label={`Swap with ${fullName(occupant.member)}, ${seatLabel(seat)}`}
+            />
+          )}
+        </>
       ) : (
         <button
           type="button"
@@ -215,18 +236,37 @@ function Seat({
   );
 }
 
+/**
+ * The tap target for an already-occupied seat or role.
+ *
+ * A separate layer rather than a handler on the occupant itself: that element
+ * is a drag handle carrying dnd-kit's listeners, and a click handler sharing it
+ * fires on every drag. This exists only while a paddler is selected, so
+ * dragging behaves normally the rest of the time.
+ */
+function PlaceHereOverlay({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="absolute inset-0 z-10 rounded-lg bg-brand-500/10 hover:bg-brand-500/20"
+    />
+  );
+}
+
 function SeatOccupantView({
   occupant,
   onTogglePin,
 }: {
-  occupant: SeatOccupant;
+  occupant: SeatedOccupant;
   onTogglePin?: (assignment: Assignment) => void;
 }) {
   const dragData: DragData = {
     kind: 'seat',
     assignmentId: occupant.assignment.id,
     memberId: occupant.member.id,
-    seat: occupant.assignment.seat!,
+    seat: occupant.assignment.seat,
   };
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: assignmentDraggableId(occupant.assignment.id),
@@ -242,7 +282,7 @@ function SeatOccupantView({
         // Without this the browser pans the page instead of starting a drag.
         style={{ touchAction: 'none' }}
         className="min-w-0 flex-1 cursor-grab text-left active:cursor-grabbing"
-        aria-label={`${fullName(occupant.member)}, ${seatLabel(occupant.assignment.seat!)}`}
+        aria-label={`${fullName(occupant.member)}, ${seatLabel(occupant.assignment.seat)}`}
       >
         <PaddlerChip
           member={occupant.member}
@@ -299,19 +339,29 @@ function RoleSlot({
     <div
       ref={setNodeRef}
       className={cn(
-        'mx-auto w-1/2 rounded-lg border transition-colors',
+        // `relative` so the tap overlay sizes to this slot, not the boat.
+        'relative mx-auto w-1/2 rounded-lg border transition-colors',
         occupant ? 'surface border-subtle' : 'border-dashed border-subtle',
         isOver && 'border-brand-600 bg-brand-100 dark:bg-brand-900',
         highlighted && !isOver && 'border-brand-400',
       )}
     >
       {occupant && dragData ? (
-        <RoleOccupantView occupant={occupant} dragData={dragData} />
+        <>
+          <RoleOccupantView occupant={occupant} dragData={dragData} />
+          {highlighted && onTap && (
+            <PlaceHereOverlay
+              onClick={() => onTap(role)}
+              label={`Replace ${fullName(occupant.member)} as ${label.toLowerCase()}`}
+            />
+          )}
+        </>
       ) : (
         <button
           type="button"
           onClick={() => onTap?.(role)}
           className="flex h-11 w-full items-center justify-center gap-1.5 text-[0.7rem] text-muted"
+          aria-label={`Empty ${label.toLowerCase()} slot`}
         >
           {icon}
           {label}

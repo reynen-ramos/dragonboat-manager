@@ -128,12 +128,18 @@ export const useRaceEntries = (crewId: string | undefined) =>
 export const useAllRaceEntries = () =>
   useQuery({ queryKey: keys.raceEntries.all, queryFn: () => adapter.raceEntries.list() });
 
+/**
+ * The settings query itself, for screens that must not act before it resolves.
+ *
+ * `useSettings` substitutes the defaults while loading, which is right for a
+ * balance bar and wrong for the settings form — editing a field against the
+ * defaults would save them over whatever the club had stored.
+ */
+export const useSettingsQuery = () =>
+  useQuery({ queryKey: keys.settings, queryFn: () => adapter.settings.get() });
+
 export function useSettings(): ClubSettings {
-  const { data } = useQuery({
-    queryKey: keys.settings,
-    queryFn: () => adapter.settings.get(),
-  });
-  return data ?? DEFAULT_CLUB_SETTINGS;
+  return useSettingsQuery().data ?? DEFAULT_CLUB_SETTINGS;
 }
 
 // --- Writes ------------------------------------------------------------------

@@ -2,12 +2,12 @@ import { getBoatLayout, seatKey, seatLabel } from './boat';
 import { ageOn } from './dates';
 import { AGE_DIVISION_BOUNDS } from './rules.config';
 import type {
-  Assignment,
   AvailabilityStatus,
   Category,
   ClubSettings,
   Member,
   SeatPosition,
+  StoredAssignment,
 } from './types';
 
 /**
@@ -30,7 +30,12 @@ export interface Issue {
 
 export interface ValidationInput {
   category: Category;
-  assignments: Assignment[];
+  /**
+   * The storage shape, not the domain union, on purpose: this function is the
+   * boundary that decides whether a stored crew is well-formed. Taking the
+   * strict `Assignment` here would assume the answer.
+   */
+  assignments: StoredAssignment[];
   /** Roster lookup for everyone referenced by `assignments`. */
   members: Map<string, Member>;
   settings: ClubSettings;
@@ -41,7 +46,7 @@ export interface ValidationInput {
    * both the Mixed and the Women's category at one regatta is entirely normal.
    * Two crews within one category race each other, so that is the real clash.
    */
-  categoryAssignments?: Pick<Assignment, 'crewId' | 'memberId'>[];
+  categoryAssignments?: Pick<StoredAssignment, 'crewId' | 'memberId'>[];
   /** Availability for this event, keyed by member id. */
   availability?: Map<string, AvailabilityStatus>;
   /** Event date, needed for age-division checks. */
@@ -58,29 +63,51 @@ export function validateCrew(input: ValidationInput): Issue[] {
   const drummers = assignments.filter((a) => a.role === 'drummer');
   const coxes = assignments.filter((a) => a.role === 'cox');
 
+  /**
+   * A paddler assignment only puts someone in the boat once it has a seat.
+   * Every check below counts the crew that would actually race, so a paddler
+   * carried on the crew but never seated leaves a bench visibly empty rather
+   * than quietly filling the seat count.
+   */
+  const seatedPaddlers = paddlers.filter(
+    (a): a is StoredAssignment & { seat: SeatPosition } => Boolean(a.seat),
+  );
+  const unseatedPaddlers = paddlers.filter((a) => !a.seat);
+
   const { boatSize } = getBoatLayout(category.boatSize);
 
   // --- Seat count -----------------------------------------------------------
-  if (paddlers.length < boatSize) {
+  if (seatedPaddlers.length < boatSize) {
     issues.push({
       level: 'error',
       code: 'SEAT_COUNT_SHORT',
-      message: `${paddlers.length} of ${boatSize} paddlers seated — ${
-        boatSize - paddlers.length
-      } seat${boatSize - paddlers.length === 1 ? '' : 's'} still empty.`,
+      message: `${seatedPaddlers.length} of ${boatSize} paddlers seated — ${
+        boatSize - seatedPaddlers.length
+      } seat${boatSize - seatedPaddlers.length === 1 ? '' : 's'} still empty.`,
     });
-  } else if (paddlers.length > boatSize) {
+  } else if (seatedPaddlers.length > boatSize) {
     issues.push({
       level: 'error',
       code: 'SEAT_COUNT_OVER',
-      message: `${paddlers.length} paddlers seated but a ${boatSize}s boat holds ${boatSize}.`,
+      message: `${seatedPaddlers.length} paddlers seated but a ${boatSize}s boat holds ${boatSize}.`,
+    });
+  }
+
+  for (const a of unseatedPaddlers) {
+    const member = members.get(a.memberId);
+    issues.push({
+      level: 'error',
+      code: 'PADDLER_NOT_SEATED',
+      message: `${
+        member ? fullName(member) : 'A paddler'
+      } is on the crew as a paddler but has no seat.`,
+      memberId: a.memberId,
     });
   }
 
   // Two people in one seat: possible through concurrent edits, so worth catching.
   const seatOccupants = new Map<string, string[]>();
-  for (const a of paddlers) {
-    if (!a.seat) continue;
+  for (const a of seatedPaddlers) {
     const key = seatKey(a.seat);
     seatOccupants.set(key, [...(seatOccupants.get(key) ?? []), a.memberId]);
   }
@@ -120,13 +147,13 @@ export function validateCrew(input: ValidationInput): Issue[] {
   }
 
   // --- Gender class ---------------------------------------------------------
-  const paddlerMembers = paddlers
+  const paddlerMembers = seatedPaddlers
     .map((a) => members.get(a.memberId))
     .filter((m): m is Member => Boolean(m));
   const womenCount = paddlerMembers.filter((m) => m.gender === 'female').length;
 
   if (category.genderClass === 'women') {
-    for (const a of paddlers) {
+    for (const a of seatedPaddlers) {
       const member = members.get(a.memberId);
       if (member && member.gender !== 'female') {
         issues.push({
@@ -226,7 +253,7 @@ export function validateCrew(input: ValidationInput): Issue[] {
     });
   }
 
-  for (const a of paddlers) {
+  for (const a of seatedPaddlers) {
     const member = members.get(a.memberId);
     if (!member || !a.seat) continue;
     if (member.sidePreference !== 'both' && member.sidePreference !== a.seat.side) {

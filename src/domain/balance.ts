@@ -1,9 +1,9 @@
 import { getBoatLayout, isBowHalf } from './boat';
 import type {
-  Assignment,
   BoatSize,
   ClubSettings,
   Member,
+  PaddlerAssignment,
   SeatPosition,
   Side,
 } from './types';
@@ -24,7 +24,7 @@ import type {
 
 /** A paddler occupying a seat. Only `role: 'paddler'` assignments qualify. */
 export interface SeatedPaddler {
-  assignment: Assignment & { seat: SeatPosition };
+  assignment: PaddlerAssignment;
   member: Member;
 }
 
@@ -58,6 +58,9 @@ export interface SeatPlan {
 }
 
 const weightOf = (p: SeatedPaddler): number => p.member.weightKg ?? 0;
+
+const sumWeight = (ps: SeatedPaddler[]): number =>
+  ps.reduce((sum, p) => sum + weightOf(p), 0);
 
 export function violatesSidePreference(p: SeatedPaddler): boolean {
   const pref = p.member.sidePreference;
@@ -140,9 +143,23 @@ export function planBalancedSeating(
   const pinned = seated.filter((p) => p.assignment.pinned);
   const movable = seated.filter((p) => !p.assignment.pinned);
 
+  const pinnedOn = (side: Side) => pinned.filter((p) => p.assignment.seat.side === side);
+
+  // Clamped at zero: a boat-size change or a duplicated seat can leave more
+  // paddlers pinned to a side than it has rows, and a negative capacity would
+  // make the `slice` below keep all but the last paddler instead of none.
   const capacity: Record<Side, number> = {
-    left: rows - pinned.filter((p) => p.assignment.seat.side === 'left').length,
-    right: rows - pinned.filter((p) => p.assignment.seat.side === 'right').length,
+    left: Math.max(0, rows - pinnedOn('left').length),
+    right: Math.max(0, rows - pinnedOn('right').length),
+  };
+
+  // Weight committed to each side so far, seeded from the paddlers already
+  // pinned there. The plan has to balance the whole boat, not just the paddlers
+  // it may move — otherwise pinning a heavy core leads the planner to pile yet
+  // more weight onto that same side.
+  const sideWeight: Record<Side, number> = {
+    left: sumWeight(pinnedOn('left')),
+    right: sumWeight(pinnedOn('right')),
   };
 
   const byWeightDesc = (a: SeatedPaddler, b: SeatedPaddler) =>
@@ -157,6 +174,7 @@ export function planBalancedSeating(
       .filter((p) => p.member.sidePreference === side)
       .sort(byWeightDesc);
     chosen[side] = wanting.slice(0, capacity[side]);
+    sideWeight[side] += sumWeight(chosen[side]);
     displaced.push(...wanting.slice(capacity[side]));
   }
 
@@ -166,18 +184,16 @@ export function planBalancedSeating(
     .concat(displaced)
     .sort(byWeightDesc);
 
-  const weightOn = (side: Side) =>
-    chosen[side].reduce((sum, p) => sum + weightOf(p), 0);
-
   for (const paddler of flexible) {
     const leftHasRoom = chosen.left.length < capacity.left;
     const rightHasRoom = chosen.right.length < capacity.right;
     let side: Side;
-    if (leftHasRoom && rightHasRoom) side = weightOn('left') <= weightOn('right') ? 'left' : 'right';
+    if (leftHasRoom && rightHasRoom) side = sideWeight.left <= sideWeight.right ? 'left' : 'right';
     else if (leftHasRoom) side = 'left';
     else if (rightHasRoom) side = 'right';
     else break; // No seats left; remaining paddlers keep their current seat.
     chosen[side].push(paddler);
+    sideWeight[side] += weightOf(paddler);
   }
 
   // 4. Place each side's paddlers into its free rows, heaviest toward the middle.

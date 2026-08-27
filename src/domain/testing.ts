@@ -1,5 +1,5 @@
 import type { SeatedPaddler } from './balance';
-import type { Assignment, Gender, Member, SidePreference, SeatPosition } from './types';
+import type { Gender, Member, PaddlerAssignment, SidePreference, SeatPosition } from './types';
 
 /** Test fixtures. Kept out of `*.test.ts` so several suites can share them. */
 
@@ -24,7 +24,7 @@ export function makeMember(overrides: Partial<Member> = {}): Member {
 export function makeSeated(
   seat: SeatPosition,
   member: Partial<Member> = {},
-  assignment: Partial<Assignment> = {},
+  assignment: Partial<PaddlerAssignment> = {},
 ): SeatedPaddler {
   const m = makeMember(member);
   return {
@@ -33,10 +33,10 @@ export function makeSeated(
       id: assignment.id ?? nextId('assignment'),
       crewId: assignment.crewId ?? 'crew-1',
       memberId: m.id,
+      ...assignment,
       role: 'paddler',
       seat,
-      ...assignment,
-    } as Assignment & { seat: SeatPosition },
+    },
   };
 }
 

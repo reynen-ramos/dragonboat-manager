@@ -146,6 +146,46 @@ describe('planBalancedSeating', () => {
     expect(rightCount).toBe(2);
   });
 
+  it('counts weight already pinned to a side when choosing sides', () => {
+    // The whole point of pinning is to lock a core in place and balance around
+    // it. With 500kg pinned left and 300kg free to move, every movable paddler
+    // belongs on the right — a planner that only weighs the paddlers it may
+    // move sees two empty sides and splits them evenly, making the boat worse
+    // than leaving it alone.
+    const seated = [
+      ...[1, 2, 3, 4, 5].map((row) =>
+        makeSeated({ row, side: 'left' }, { weightKg: 100, sidePreference: 'both' }, { pinned: true }),
+      ),
+      ...[1, 2, 3, 4, 5].map((row) =>
+        makeSeated({ row, side: 'right' }, { weightKg: 60, sidePreference: 'both' }),
+      ),
+    ];
+    const after = applyPlan(seated, 20);
+    const report = computeBalance(after, 20, settings);
+
+    expect(report.leftKg).toBe(500);
+    expect(report.rightKg).toBe(300);
+  });
+
+  it('adds nobody to a side already pinned beyond its capacity', () => {
+    // Six paddlers pinned to a five-row side, doubled up on rows 1-3 — so rows
+    // 4 and 5 are still free and the placement pass would happily use them.
+    // Capacity is -1 here, and `slice(0, -1)` keeps all but the last paddler
+    // instead of none, quietly seating someone on the overloaded side.
+    const seated = [
+      ...[1, 1, 2, 2, 3, 3].map((row) =>
+        makeSeated({ row, side: 'left' }, { weightKg: 80, sidePreference: 'left' }, { pinned: true }),
+      ),
+      makeSeated({ row: 1, side: 'right' }, { weightKg: 70, sidePreference: 'left' }),
+      makeSeated({ row: 2, side: 'right' }, { weightKg: 65, sidePreference: 'left' }),
+    ];
+
+    const plan = planBalancedSeating(seated, 10);
+
+    expect(plan.filter((p) => p.seat.side === 'left')).toHaveLength(0);
+    expect(plan.filter((p) => p.seat.side === 'right')).toHaveLength(2);
+  });
+
   it('gives every paddler a distinct seat', () => {
     const seated = Array.from({ length: 20 }, (_, i) =>
       makeSeated(

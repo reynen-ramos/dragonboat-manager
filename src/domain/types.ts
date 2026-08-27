@@ -95,22 +95,65 @@ export interface Crew {
   notes?: string;
 }
 
-/**
- * One person's place in one crew.
- *
- * `seat` is set only for `paddler`; drummer, cox, and reserve have no seat
- * coordinates. Keeping them in the same table means "who is in this crew" is a
- * single query.
- */
-export interface Assignment {
+interface AssignmentBase {
   id: string;
   crewId: string;
   memberId: string;
-  role: CrewRole;
-  seat?: SeatPosition;
+}
+
+/**
+ * A paddler in a seat. The seat is what puts them in the boat, so it is
+ * required — a paddler without one is not a lighter kind of paddler, it is a
+ * corrupt row, and `validateCrew` reports it as such.
+ */
+export interface PaddlerAssignment extends AssignmentBase {
+  role: 'paddler';
+  seat: SeatPosition;
   /** Pinned paddlers are never moved by auto-balance. */
   pinned?: boolean;
 }
+
+/** Someone in the crew who occupies no seat. */
+export interface CrewMemberAssignment extends AssignmentBase {
+  role: 'drummer' | 'cox' | 'reserve';
+  seat?: undefined;
+  pinned?: undefined;
+}
+
+/**
+ * One person's place in one crew.
+ *
+ * Keeping every role in the same table means "who is in this crew" is a single
+ * query. The union is what stops a seatless paddler or a seated cox from being
+ * written in the first place; see `StoredAssignment` for the shape that crosses
+ * the storage boundary, where neither guarantee holds yet.
+ */
+export type Assignment = PaddlerAssignment | CrewMemberAssignment;
+
+/**
+ * An assignment as it arrives from storage, before anything has checked it.
+ *
+ * localStorage and any future backend hand back whatever was written by an
+ * older release or a hand-edited backup, so the fields the domain requires are
+ * optional here. `validateCrew` is the boundary that reports the difference.
+ */
+export interface StoredAssignment extends AssignmentBase {
+  role: CrewRole;
+  seat?: SeatPosition;
+  pinned?: boolean;
+}
+
+/**
+ * `Omit` collapses a union into its common keys, which would turn `Assignment`
+ * back into the loose shape this file exists to replace. These distribute.
+ */
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+
+/** A new assignment, before storage has given it an id. */
+export type AssignmentInput = DistributiveOmit<Assignment, 'id'>;
+
+/** A partial update to one assignment. */
+export type AssignmentPatch = DistributiveOmit<Partial<Assignment>, 'id'>;
 
 export interface Availability {
   eventId: string;
