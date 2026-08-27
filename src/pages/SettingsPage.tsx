@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { NumberField } from '@/components/ui/NumberField';
 import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
+import { formatDate } from '@/domain/dates';
 import type { BoatSize, Snapshot } from '@/domain/types';
 import {
   UnreadableSnapshotError,
@@ -15,6 +16,7 @@ import {
   useSettings,
   useSettingsQuery,
 } from '@/queries/hooks';
+import { useBackupReminder } from '@/stores/backupReminder';
 import { downloadTextFile } from '@/utils/download';
 
 /** A fraction stored as 0.03 is shown as 3, without a float tail. */
@@ -29,6 +31,8 @@ export function SettingsPage() {
   const importSnapshot = useImportSnapshot();
   const fileInput = useRef<HTMLInputElement>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const markExported = useBackupReminder((s) => s.markExported);
+  const lastExportAt = useBackupReminder((s) => s.lastExportAt);
   const [importError, setImportError] = useState<string>();
 
   const setMinWomen = (boatSize: BoatSize, value: number) =>
@@ -118,17 +122,21 @@ export function SettingsPage() {
           <h2 className="font-semibold">Your data</h2>
           <p className="mt-1 text-sm text-muted">
             Everything is stored in this browser only. Export regularly — clearing your browser data
-            deletes it.
+            deletes it.{' '}
+            {lastExportAt
+              ? `Last backup: ${formatDate(lastExportAt.slice(0, 10))}.`
+              : 'Never backed up on this device.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              onClick={async () =>
+              onClick={async () => {
                 downloadTextFile(
                   `dragonboat-backup-${new Date().toISOString().slice(0, 10)}.json`,
                   JSON.stringify(await exportSnapshot(), null, 2),
                   'application/json',
-                )
-              }
+                );
+                markExported();
+              }}
             >
               <Download /> Export backup
             </Button>
