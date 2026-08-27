@@ -8,6 +8,7 @@ import {
   pointerWithin,
   useSensor,
   useSensors,
+  type Announcements,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
@@ -24,7 +25,7 @@ import { RosterPanel } from '@/components/boat/RosterPanel';
 import { Button } from '@/components/ui/Button';
 import { Card, EmptyState, LoadFailed, Spinner } from '@/components/ui/misc';
 import { planBalancedSeating, violatesSidePreference } from '@/domain/balance';
-import { seatKey } from '@/domain/boat';
+import { seatKey, seatLabel } from '@/domain/boat';
 import { planDrop, type DropTarget, type SeatingChange } from '@/domain/seating';
 import type { Assignment, Member, SeatPosition } from '@/domain/types';
 import {
@@ -47,7 +48,8 @@ import { CrewResults } from '@/pages/RaceDayPage';
 import { useLineupHistory } from '@/stores/lineupHistory';
 import { categoryName } from '@/utils/format';
 
-type MobileTab = 'roster' | 'boat' | 'checks';
+const MOBILE_TABS = ['roster', 'boat', 'checks'] as const;
+type MobileTab = (typeof MOBILE_TABS)[number];
 
 /**
  * Prefer whatever the pointer is actually inside.
@@ -62,6 +64,30 @@ const collisionDetection: CollisionDetection = (args) => {
   const withinPointer = pointerWithin(args);
   return withinPointer.length > 0 ? withinPointer : closestCenter(args);
 };
+
+/** Screen-reader narration for the drag interaction. */
+const announcements: Announcements = {
+  onDragStart: ({ active }) => `Picked up ${dragLabel(active.data.current as DragData)}.`,
+  onDragOver: ({ over }) => describeTarget(over?.data.current as DropData | undefined, 'Over'),
+  onDragEnd: ({ over }) => {
+    const drop = over?.data.current as DropData | undefined;
+    if (!drop) return 'Dropped outside the boat; nothing changed.';
+    if (drop.kind === 'seat') return `Placed in ${seatLabel(drop.seat)}.`;
+    if (drop.kind === 'role') return `Placed as ${drop.role}.`;
+    return 'Removed from the crew.';
+  },
+  onDragCancel: () => 'Cancelled; nothing changed.',
+};
+
+const dragLabel = (drag: DragData | undefined) =>
+  drag?.kind === 'seat' ? `the paddler in ${seatLabel(drag.seat)}` : 'the paddler';
+
+function describeTarget(drop: DropData | undefined, verb: string): string {
+  if (!drop) return 'Not over a drop target.';
+  if (drop.kind === 'seat') return `${verb} ${seatLabel(drop.seat)}.`;
+  if (drop.kind === 'role') return `${verb} the ${drop.role} position.`;
+  return `${verb} the roster; releasing removes them from the crew.`;
+}
 
 export function LineupPage() {
   const { eventId, crewId } = useParams();
@@ -271,6 +297,10 @@ export function LineupPage() {
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
+      // dnd-kit announces generic ids by default ("Draggable item
+      // assignment-3 was moved"), which tells a screen reader user nothing
+      // about who moved or where. These name the paddler and the seat.
+      accessibility={{ announcements }}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragging(undefined)}
@@ -309,13 +339,37 @@ export function LineupPage() {
         </p>
       )}
 
-      {/* Phones get one panel at a time; there is no room for three columns. */}
-      <div className="no-print mb-3 flex gap-1 rounded-lg surface-sunken p-1 lg:hidden">
-        {(['roster', 'boat', 'checks'] as MobileTab[]).map((value) => (
+      {/*
+        Phones get one panel at a time; there is no room for three columns.
+        Real tab semantics rather than a row of `aria-pressed` buttons, which
+        announce as independent toggles and say nothing about the set.
+
+        Deliberately not @radix-ui/react-tabs: it shows exactly one panel, and
+        above `lg` this layout shows all three at once with the tab bar hidden.
+      */}
+      <div
+        role="tablist"
+        aria-label="Lineup panels"
+        className="no-print mb-3 flex gap-1 rounded-lg surface-sunken p-1 lg:hidden"
+      >
+        {MOBILE_TABS.map((value, index) => (
           <button
             key={value}
+            id={`tab-${value}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === value}
+            aria-controls={`panel-${value}`}
+            tabIndex={tab === value ? 0 : -1}
             onClick={() => setTab(value)}
-            aria-pressed={tab === value}
+            onKeyDown={(e) => {
+              const delta = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+              if (!delta) return;
+              e.preventDefault();
+              const next = MOBILE_TABS[(index + delta + MOBILE_TABS.length) % MOBILE_TABS.length];
+              setTab(next);
+              document.getElementById(`tab-${next}`)?.focus();
+            }}
             className={`flex-1 rounded-md py-2 text-sm font-medium capitalize ${
               tab === value ? 'surface shadow-sm' : 'text-muted'
             }`}
@@ -337,11 +391,21 @@ export function LineupPage() {
       />
 
       <div className="no-print grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_18rem]">
-        <div className={`${tab === 'roster' ? 'flex' : 'hidden'} min-h-0 lg:flex lg:max-h-[80vh]`}>
+        <div
+          id="panel-roster"
+          role="tabpanel"
+          aria-labelledby="tab-roster"
+          className={`${tab === 'roster' ? 'flex' : 'hidden'} min-h-0 lg:flex lg:max-h-[80vh]`}
+        >
           {rosterPanel}
         </div>
 
-        <div className={tab === 'boat' ? 'block' : 'hidden lg:block'}>
+        <div
+          id="panel-boat"
+          role="tabpanel"
+          aria-labelledby="tab-boat"
+          className={tab === 'boat' ? 'block' : 'hidden lg:block'}
+        >
           <Card className="py-2">
             <BoatView
               boatSize={category.data.boatSize}
@@ -377,7 +441,14 @@ export function LineupPage() {
           </div>
         </div>
 
-        <div className={tab === 'checks' ? 'block' : 'hidden lg:block'}>{checksPanel}</div>
+        <div
+          id="panel-checks"
+          role="tabpanel"
+          aria-labelledby="tab-checks"
+          className={tab === 'checks' ? 'block' : 'hidden lg:block'}
+        >
+          {checksPanel}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={null}>

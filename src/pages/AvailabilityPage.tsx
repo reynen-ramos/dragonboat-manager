@@ -7,7 +7,7 @@ import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/comp
 import { formatDate } from '@/domain/dates';
 import type { Availability, AvailabilityStatus, Member } from '@/domain/types';
 import { useAvailability, useEvent, useMembers, useSetAvailability } from '@/queries/hooks';
-import { cn } from '@/utils/cn';
+import { RadioCards } from '@/components/ui/RadioCards';
 import { fullName, initials, pluralise, SIDE_MARK } from '@/utils/format';
 
 /**
@@ -223,26 +223,19 @@ function AvailabilityRow({
         {SIDE_MARK[member.sidePreference]}
       </Badge>
 
-      <div
+      <RadioCards
+        label={`Availability for ${fullName(member)}`}
         className="flex shrink-0 gap-1"
-        role="group"
-        aria-label={`Availability for ${fullName(member)}`}
-      >
-        {STATUSES.map(({ value, label, tone }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onSetStatus(value)}
-            aria-pressed={status === value}
-            className={cn(
-              'h-9 min-w-14 rounded-lg border px-2 text-xs font-medium transition-colors',
-              status === value ? `${tone} border-transparent` : 'border-subtle hover:surface-sunken',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        optionClassName="h-9 min-w-14 rounded-lg border border-subtle px-2 text-xs font-medium transition-colors hover:surface-sunken"
+        value={status}
+        onChange={onSetStatus}
+        options={STATUSES.map(({ value, label, tone }) => ({
+          value,
+          label,
+          selectedClassName: `${tone} border-transparent`,
+        }))}
+        renderOption={(option) => option.label}
+      />
     </li>
   );
 }

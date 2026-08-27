@@ -25,8 +25,16 @@ export function AppShell() {
 
   return (
     <div className="min-h-dvh sm:flex">
+      {/* First tab stop: skips the nav, which is identical on every screen. */}
+      <a
+        href="#main"
+        className="no-print sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3
+          focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-3 focus:py-2 focus:text-white"
+      >
+        Skip to content
+      </a>
       <Sidebar />
-      <main className="min-w-0 flex-1 px-4 pb-24 pt-5 sm:px-8 sm:pb-10">
+      <main id="main" className="min-w-0 flex-1 px-4 pb-24 pt-5 sm:px-8 sm:pb-10">
         <Outlet />
       </main>
       <BottomBar />
@@ -39,7 +47,7 @@ function Sidebar() {
   return (
     <aside className="no-print hidden w-56 shrink-0 border-r border-subtle px-3 py-5 sm:block">
       <Wordmark className="mb-6 px-2" />
-      <nav className="flex flex-col gap-1">
+      <nav aria-label="Main" className="flex flex-col gap-1">
         {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
@@ -63,9 +71,19 @@ function Sidebar() {
   );
 }
 
+/**
+ * Shares the sidebar's "Main" label deliberately.
+ *
+ * Two navigation landmarks with one name would be ambiguous if both were
+ * exposed, but each is `display: none` at the other's breakpoint, which takes
+ * it out of the accessibility tree entirely. Exactly one is ever present.
+ */
 function BottomBar() {
   return (
-    <nav className="no-print surface fixed inset-x-0 bottom-0 z-30 flex border-t border-subtle pb-[env(safe-area-inset-bottom)] sm:hidden">
+    <nav
+      aria-label="Main"
+      className="no-print surface fixed inset-x-0 bottom-0 z-30 flex border-t border-subtle pb-[env(safe-area-inset-bottom)] sm:hidden"
+    >
       {NAV.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}

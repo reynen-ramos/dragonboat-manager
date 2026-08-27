@@ -5,7 +5,10 @@ import { Field, Input, Select } from '@/components/ui/Field';
 import { AGE_DIVISION_BOUNDS, BOAT_SIZES, COMMON_DISTANCES_M } from '@/domain/rules.config';
 import type { AgeDivision, BoatSize, Category, GenderClass } from '@/domain/types';
 import { useCreateCategory } from '@/queries/hooks';
-import { cn } from '@/utils/cn';
+import { RadioCards } from '@/components/ui/RadioCards';
+
+const CHOICE_CLASSES = 'rounded-xl border border-subtle px-3 py-3 text-left transition-colors hover:surface-sunken';
+const CHOICE_SELECTED = 'border-brand-600 bg-brand-50 dark:bg-brand-900';
 
 const GENDER_CLASSES: { value: GenderClass; label: string; hint: string }[] = [
   { value: 'open', label: 'Open', hint: 'Any mix' },
@@ -77,32 +80,36 @@ export function CategoryForm({
         <div className="flex flex-col gap-5">
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-muted">Boat size</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {BOAT_SIZES.map((size) => (
-                <Choice
-                  key={size}
-                  selected={boatSize === size}
-                  onClick={() => setBoatSize(size)}
-                  title={`${size}s`}
-                  subtitle={`${size} paddlers`}
-                />
-              ))}
-            </div>
+            <RadioCards
+              label="Boat size"
+              className="grid grid-cols-2 gap-2"
+              optionClassName={CHOICE_CLASSES}
+              value={String(boatSize)}
+              onChange={(next) => setBoatSize(Number(next) as BoatSize)}
+              options={BOAT_SIZES.map((size) => ({
+                value: String(size),
+                label: `${size}s`,
+                description: `${size} paddlers`,
+                selectedClassName: CHOICE_SELECTED,
+              }))}
+            />
           </fieldset>
 
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-muted">Class</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {GENDER_CLASSES.map((option) => (
-                <Choice
-                  key={option.value}
-                  selected={genderClass === option.value}
-                  onClick={() => setGenderClass(option.value)}
-                  title={option.label}
-                  subtitle={option.hint}
-                />
-              ))}
-            </div>
+            <RadioCards
+              label="Class"
+              className="grid grid-cols-3 gap-2"
+              optionClassName={CHOICE_CLASSES}
+              value={genderClass}
+              onChange={setGenderClass}
+              options={GENDER_CLASSES.map((option) => ({
+                value: option.value,
+                label: option.label,
+                description: option.hint,
+                selectedClassName: CHOICE_SELECTED,
+              }))}
+            />
           </fieldset>
 
           {showOptional ? (
@@ -169,31 +176,3 @@ export function CategoryForm({
   );
 }
 
-function Choice({
-  selected,
-  onClick,
-  title,
-  subtitle,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={cn(
-        'rounded-xl border px-3 py-3 text-left transition-colors',
-        selected
-          ? 'border-brand-600 bg-brand-50 dark:bg-brand-900'
-          : 'border-subtle hover:surface-sunken',
-      )}
-    >
-      <span className="block font-semibold">{title}</span>
-      <span className="block text-xs text-muted">{subtitle}</span>
-    </button>
-  );
-}

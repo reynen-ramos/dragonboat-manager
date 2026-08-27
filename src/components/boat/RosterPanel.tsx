@@ -1,5 +1,5 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { Search } from 'lucide-react';
+import { GripVertical, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Input, Select } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/misc';
@@ -167,17 +167,31 @@ function RosterCard({
         !selected && 'hover:surface-sunken',
       )}
     >
+      {/*
+        Two controls, not one. The drag handle carries dnd-kit's keyboard
+        activator, which fires on Space and Enter, the same keys that activate
+        a button. One element with both `listeners` and
+        `onClick` selected the paddler *and* started a drag on one press.
+      */}
       <button
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        style={{ touchAction: 'none' }}
+        type="button"
         onClick={onSelect}
         aria-pressed={selected}
-        className="min-w-0 flex-1 cursor-grab text-left active:cursor-grabbing"
+        className="min-w-0 flex-1 text-left"
       >
         <PaddlerChip member={member} unavailable={unavailable} doubleBooked={doubleBooked} />
       </button>
+      <span
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        role="button"
+        aria-label={`Drag ${fullName(member)}`}
+        style={{ touchAction: 'none' }}
+        className="shrink-0 cursor-grab px-1 text-muted active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5" aria-hidden="true" />
+      </span>
     </div>
   );
 }
