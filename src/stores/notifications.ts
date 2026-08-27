@@ -23,19 +23,18 @@ interface NotificationState {
 
 let nextId = 0;
 
-/** Enough to show a burst without the stack growing without bound. */
-const MAX_VISIBLE = 3;
-
 export const useNotifications = create<NotificationState>((set) => ({
   notifications: [],
 
   notify: (message) =>
     set((state) => {
       // A failing bulk operation rejects once per row; showing the same
-      // sentence five times tells the user nothing extra.
+      // sentence five times tells the user nothing extra. Distinct messages
+      // are all kept — every one means an edit was lost, and a cap that
+      // silently evicted the oldest contradicted the Toaster's promise not
+      // to auto-dismiss. Dedup bounds the realistic worst case.
       if (state.notifications.some((n) => n.message === message)) return state;
-      const next = [...state.notifications, { id: ++nextId, message }];
-      return { notifications: next.slice(-MAX_VISIBLE) };
+      return { notifications: [...state.notifications, { id: ++nextId, message }] };
     }),
 
   dismiss: (id) =>

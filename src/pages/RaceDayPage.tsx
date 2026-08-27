@@ -1,5 +1,5 @@
 import { ArrowLeft, Plus, Timer, Trash2, Trophy } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -208,8 +208,20 @@ function ResultRow({ item, crewName }: { item: RankedEntry; crewName: string }) 
 
   const [draft, setDraft] = useState(entry.timeMs != null ? formatRaceTime(entry.timeMs) : '');
   const [invalid, setInvalid] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Adopt the stored time when it changes under a field nobody is typing in —
+  // a cross-tab sync or a failed save otherwise leaves the box permanently
+  // showing a time that is not stored.
+  useEffect(() => {
+    if (!editing) {
+      setDraft(entry.timeMs != null ? formatRaceTime(entry.timeMs) : '');
+      setInvalid(false);
+    }
+  }, [entry.timeMs, editing]);
 
   const commit = () => {
+    setEditing(false);
     const trimmed = draft.trim();
     if (!trimmed) {
       setInvalid(false);
@@ -258,6 +270,7 @@ function ResultRow({ item, crewName }: { item: RankedEntry; crewName: string }) 
         aria-label={`Finish time for ${crewName}`}
         aria-invalid={invalid}
         value={draft}
+        onFocus={() => setEditing(true)}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}

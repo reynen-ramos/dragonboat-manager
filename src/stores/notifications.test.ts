@@ -24,10 +24,12 @@ describe('notifications', () => {
     expect(state().notifications).toHaveLength(1);
   });
 
-  it('keeps only the most recent few', () => {
+  it('keeps every distinct failure until it is dismissed', () => {
+    // Each message means an edit was lost. A cap that silently evicted the
+    // oldest contradicted the promise not to auto-dismiss.
     for (const m of ['one', 'two', 'three', 'four']) state().notify(m);
 
-    expect(state().notifications.map((n) => n.message)).toEqual(['two', 'three', 'four']);
+    expect(state().notifications.map((n) => n.message)).toEqual(['one', 'two', 'three', 'four']);
   });
 });
 

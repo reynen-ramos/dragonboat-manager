@@ -17,6 +17,8 @@ import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
 import type { SeatingChange } from '@/domain/seating';
 import type {
   Assignment,
+  AssignmentInput,
+  AssignmentPatch,
   Availability,
   Category,
   ClubEvent,
@@ -266,13 +268,13 @@ export const useDuplicateCrew = () =>
   );
 
 export const useCreateAssignment = () =>
-  useInvalidatingMutation((input: Omit<Assignment, 'id'>) => adapter.assignments.create(input), [
+  useInvalidatingMutation((input: AssignmentInput) => adapter.assignments.create(input), [
     keys.assignments.all,
   ]);
 
 export const useUpdateAssignment = () =>
   useInvalidatingMutation(
-    ({ id, patch }: { id: string; patch: Partial<Omit<Assignment, 'id'>> }) =>
+    ({ id, patch }: { id: string; patch: AssignmentPatch }) =>
       adapter.assignments.update(id, patch),
     [keys.assignments.all],
   );
@@ -283,7 +285,7 @@ export const useDeleteAssignment = () =>
 /** Re-seating moves several paddlers at once and must land as one write. */
 export const useBulkUpdateAssignments = () =>
   useInvalidatingMutation(
-    (patches: { id: string; patch: Partial<Omit<Assignment, 'id'>> }[]) =>
+    (patches: { id: string; patch: AssignmentPatch }[]) =>
       adapter.assignments.bulkUpdate(patches),
     [keys.assignments.all],
   );

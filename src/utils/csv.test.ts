@@ -269,3 +269,38 @@ describe('export safety', () => {
     expect(members[0].firstName).toBe('Iñigo');
   });
 });
+
+describe('formula-guard round trip', () => {
+  const base: Member = {
+    id: 'm1',
+    firstName: 'Ana',
+    lastName: 'Reyes',
+    gender: 'female',
+    sidePreference: 'left',
+    canDrum: false,
+    canSteer: false,
+    status: 'active',
+  };
+
+  it('round-trips a phone number that begins with +', () => {
+    // Export guards "+61…" against formula execution with an apostrophe;
+    // import must strip it back off or the app corrupts its own backups.
+    const csv = membersToCsv([{ ...base, phone: '+61 400 123 456' }]);
+    const { members } = parseMembersCsv(csv);
+
+    expect(members[0].phone).toBe('+61 400 123 456');
+  });
+
+  it('round-trips a note that looks like a formula', () => {
+    const csv = membersToCsv([{ ...base, notes: '=1+1' }]);
+    const { members } = parseMembersCsv(csv);
+
+    expect(members[0].notes).toBe('=1+1');
+  });
+
+  it('keeps a genuine leading apostrophe that guards nothing', () => {
+    const { members } = parseMembersCsv("First name,Gender,Notes\nAna,F,'tis the season\n");
+
+    expect(members[0].notes).toBe("'tis the season");
+  });
+});

@@ -152,7 +152,7 @@ export function parseMembersCsv(text: string, today = todayIso()): CsvImportResu
   dataRows.forEach((row) => {
     const cells: Partial<Record<(typeof CSV_COLUMNS)[number], string>> = {};
     columnFor.forEach((column, i) => {
-      if (column) cells[column] = row.cells[i] ?? '';
+      if (column) cells[column] = stripFormulaGuard(row.cells[i] ?? '');
     });
 
     const firstName = (cells.firstName ?? '').trim();
@@ -215,6 +215,16 @@ export function parseMembersCsv(text: string, today = todayIso()): CsvImportResu
  * quoting it would break the round trip back into the app.
  */
 const RISKY_PREFIX = /^[=+\-@\t\r]/;
+
+/**
+ * The exact inverse of `escapeCell`'s formula guard, applied on import.
+ *
+ * Export prefixes an apostrophe to any risky-leading cell — which includes a
+ * phone number written "+61 400 123 456". Without stripping it back off, the
+ * app's own export re-imported with mangled phones and notes.
+ */
+const stripFormulaGuard = (cell: string): string =>
+  cell.startsWith("'") && RISKY_PREFIX.test(cell.slice(1)) ? cell.slice(1) : cell;
 
 const escapeCell = (value: unknown): string => {
   let text = value == null ? '' : String(value);

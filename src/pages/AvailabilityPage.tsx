@@ -1,5 +1,5 @@
 import { ArrowLeft, Search, Users } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -149,17 +149,22 @@ export function AvailabilityPage() {
                     status={byMember.get(member.id)?.status}
                     note={byMember.get(member.id)?.note}
                     onSetStatus={(status) => setOne(member.id, status)}
-                    onSetNote={(note) =>
+                    onSetNote={(note) => {
+                      // A note is commentary on an answer, not an answer. The
+                      // old fallback recorded 'maybe' for a paddler nobody had
+                      // asked, changing the counts and the roster filter.
+                      const current = byMember.get(member.id);
+                      if (!current) return;
                       setAvailability.mutate([
                         {
                           eventId: event.data!.id,
                           memberId: member.id,
-                          status: byMember.get(member.id)?.status ?? 'maybe',
+                          status: current.status,
                           updatedAt: new Date().toISOString(),
                           ...(note ? { note } : {}),
                         },
-                      ])
-                    }
+                      ]);
+                    }}
                   />
                 ))}
               </ul>
@@ -187,6 +192,11 @@ function AvailabilityRow({
   const [draftNote, setDraftNote] = useState(note ?? '');
   const [editingNote, setEditingNote] = useState(false);
 
+  // Adopt an external note change while the field is not being edited.
+  useEffect(() => {
+    if (!editingNote) setDraftNote(note ?? '');
+  }, [note, editingNote]);
+
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-2.5">
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-800 dark:bg-brand-900 dark:text-brand-100">
@@ -208,7 +218,7 @@ function AvailabilityRow({
             }}
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
-        ) : (
+        ) : status ? (
           <button
             type="button"
             onClick={() => setEditingNote(true)}
@@ -216,6 +226,9 @@ function AvailabilityRow({
           >
             {note || 'Add note'}
           </button>
+        ) : (
+          // No status yet: a note here would have to invent one to be stored.
+          <span className="truncate text-xs text-muted/70">Set In, Maybe or Out to add a note</span>
         )}
       </div>
 
