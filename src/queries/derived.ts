@@ -123,6 +123,8 @@ export function useCrewIssues(
   const settings = useSettings();
   const availability = useAvailabilityByMember(eventId);
   const siblingAssignments = useCategoryCrewAssignments(category?.id);
+  const crews = useAllCrews();
+  const isVariant = Boolean(crews.data?.find((c) => c.id === crewId)?.variantOf);
 
   return useMemo(() => {
     if (!category || !crewId) return [];
@@ -132,10 +134,13 @@ export function useCrewIssues(
       members: lineup.membersById,
       settings,
       availability,
-      categoryAssignments: siblingAssignments,
+      // A variant is a draft of the crew it shadows: sharing paddlers with the
+      // real plan is its whole point, so cross-crew clash rules do not apply.
+      categoryAssignments: isVariant ? [] : siblingAssignments,
       eventDate,
     });
   }, [
+    isVariant,
     category,
     crewId,
     lineup.assignments,
@@ -161,7 +166,11 @@ export function useCategoryCrewAssignments(categoryId: string | undefined) {
   return useMemo(() => {
     if (!categoryId) return [];
     const crewIds = new Set(
-      (crews.data ?? []).filter((c) => c.categoryId === categoryId).map((c) => c.id),
+      (crews.data ?? [])
+        // Variants are drafts: their paddlers stay eligible everywhere and
+        // clash with nothing, in either direction.
+        .filter((c) => c.categoryId === categoryId && !c.variantOf)
+        .map((c) => c.id),
     );
     return (allAssignments.data ?? [])
       .filter((a) => crewIds.has(a.crewId))

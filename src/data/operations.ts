@@ -56,6 +56,12 @@ export async function deleteCrewCascade(
   const crew = await adapter.crews.get(crewId);
   if (crew) bundle.crews.push(crew);
 
+  // A crew's alternative plans mean nothing without it — and an orphaned
+  // variant would keep existing in storage while rendering nowhere, since the
+  // event screen shows variants only beneath their primary.
+  const variants = await adapter.crews.list({ variantOf: crewId });
+  for (const variant of variants) merge(bundle, await deleteCrewCascade(adapter, variant.id));
+
   const [assignments, raceEntries] = await Promise.all([
     adapter.assignments.list({ crewId }),
     adapter.raceEntries.list({ crewId }),
@@ -174,4 +180,43 @@ export async function duplicateCrew(
   }
 
   return copy;
+}
+
+/**
+ * Creates a Plan B (C, D…) for a crew: a full copy of its lineup, marked as a
+ * variant so it never races and never counts toward double-booking.
+ */
+export async function createCrewVariant(adapter: DataAdapter, crewId: string): Promise<Crew> {
+  const source = await adapter.crews.get(crewId);
+  if (!source) throw new Error('That crew no longer exists.');
+
+  const siblings = await adapter.crews.list({ categoryId: source.categoryId });
+  const existing = siblings.filter((c) => c.variantOf === crewId).length;
+  const letter = String.fromCharCode(66 + existing); // B first: the crew itself is plan A.
+
+  const copy = await duplicateCrew(adapter, crewId, `${source.name} · Plan ${letter}`);
+  return adapter.crews.update(copy.id, { variantOf: crewId });
+}
+
+/**
+ * Exchanges the lineups of two crews — how a variant becomes the real plan.
+ *
+ * The crews swap rows rather than identities: the racing crew keeps its id, so
+ * race entries never dangle, and the variant ends up holding the previous
+ * lineup as the new fallback. Assignment ids ride along unchanged, which keeps
+ * the operation self-inverse — running it again is the undo.
+ */
+export async function swapCrewLineups(
+  adapter: DataAdapter,
+  crewIdA: string,
+  crewIdB: string,
+): Promise<void> {
+  const [rowsA, rowsB] = await Promise.all([
+    adapter.assignments.list({ crewId: crewIdA }),
+    adapter.assignments.list({ crewId: crewIdB }),
+  ]);
+  await adapter.assignments.bulkUpdate([
+    ...rowsA.map((a) => ({ id: a.id, patch: { crewId: crewIdB } })),
+    ...rowsB.map((b) => ({ id: b.id, patch: { crewId: crewIdA } })),
+  ]);
 }
