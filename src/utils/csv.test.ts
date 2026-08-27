@@ -132,3 +132,140 @@ describe('membersToCsv', () => {
     expect(membersToCsv([member])).toContain('"Prefers row 2, ""engine room"" trained"');
   });
 });
+
+describe('row numbers point at the real spreadsheet line', () => {
+  it('counts blank lines that were skipped', () => {
+    // Row numbers exist to send someone back to the row that needs fixing.
+    // Indexing into the filtered rows made them drift past every blank line.
+    const csv = 'First name,Weight\nAna,60\n\n,75\n';
+    const { errors } = parseMembersCsv(csv);
+
+    expect(errors).toEqual([{ row: 4, message: 'Skipped - no name.' }]);
+  });
+
+  it('counts newlines inside a quoted field', () => {
+    const csv = 'First name,Notes\nAna,"line one\nline two"\n,75\n';
+    const { errors } = parseMembersCsv(csv);
+
+    expect(errors[0].row).toBe(4);
+  });
+});
+
+describe('gender column', () => {
+  it('warns when there is none, instead of making everyone "other"', () => {
+    // Silently importing the roster as 'other' means no mixed crew can meet
+    // its minimum and no women's crew can be legal, with nothing to explain it.
+    const { members, warnings } = parseMembersCsv('First name,Weight\nAna,60\n');
+
+    expect(members[0].gender).toBe('other');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/no gender column/i);
+    expect(warnings[0].row).toBeUndefined();
+  });
+
+  it('says nothing when the column is present', () => {
+    const { warnings } = parseMembersCsv('First name,Gender\nAna,F\n');
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe('dates of birth', () => {
+  const today = '2026-08-27';
+
+  it('accepts an ISO date', () => {
+    const { members, warnings } = parseMembersCsv(
+      'First name,Gender,DOB\nAna,F,1996-03-12\n',
+      today,
+    );
+
+    expect(members[0].dateOfBirth).toBe('1996-03-12');
+    expect(warnings).toEqual([]);
+  });
+
+  it('refuses an ambiguous slash date rather than guessing', () => {
+    // 03/04/1996 is 3 April in most of the world and 4 March in the US.
+    // Guessing puts paddlers in the wrong age division.
+    const { members, warnings } = parseMembersCsv(
+      'First name,Gender,DOB\nAna,F,03/04/1996\n',
+      today,
+    );
+
+    expect(members).toHaveLength(1);
+    expect(members[0].dateOfBirth).toBeUndefined();
+    expect(warnings[0].row).toBe(2);
+    expect(warnings[0].message).toMatch(/YYYY-MM-DD/);
+  });
+
+  it('rejects a date that does not exist', () => {
+    const { members, warnings } = parseMembersCsv(
+      'First name,Gender,DOB\nAna,F,2025-02-30\n',
+      today,
+    );
+
+    expect(members[0].dateOfBirth).toBeUndefined();
+    expect(warnings[0].message).toMatch(/not a real date/);
+  });
+
+  it('rejects a date in the future', () => {
+    const { members, warnings } = parseMembersCsv(
+      'First name,Gender,DOB\nAna,F,2030-01-01\n',
+      today,
+    );
+
+    expect(members[0].dateOfBirth).toBeUndefined();
+    expect(warnings[0].message).toMatch(/in the future/);
+  });
+
+  it('still imports the member, since only age checks are affected', () => {
+    const { members, errors } = parseMembersCsv(
+      'First name,Gender,DOB\nAna,F,not a date\n',
+      today,
+    );
+
+    expect(errors).toEqual([]);
+    expect(members[0].firstName).toBe('Ana');
+  });
+});
+
+describe('export safety', () => {
+  const base: Member = {
+    id: 'm1',
+    firstName: 'Ana',
+    lastName: 'Reyes',
+    gender: 'female',
+    sidePreference: 'left',
+    canDrum: false,
+    canSteer: false,
+    status: 'active',
+  };
+
+  it('neutralises a cell a spreadsheet would run as a formula', () => {
+    const csv = membersToCsv([{ ...base, notes: '=cmd|/c calc' }]);
+
+    expect(csv).toContain("'=cmd|/c calc");
+  });
+
+  it('leaves a negative number alone', () => {
+    // Quoting this would break the round trip; it is a weight, not an attack.
+    const csv = membersToCsv([{ ...base, weightKg: -5 }]);
+
+    expect(csv).not.toContain("'-5");
+    expect(csv).toContain('-5');
+  });
+
+  it('starts with a BOM and uses CRLF, so Excel reads UTF-8', () => {
+    const csv = membersToCsv([{ ...base, firstName: 'Iñigo' }]);
+
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv).toContain('\r\n');
+    expect(csv).toContain('Iñigo');
+  });
+
+  it('survives a round trip back through the importer', () => {
+    const csv = membersToCsv([{ ...base, firstName: 'Iñigo', notes: '=1+1' }]);
+    const { members, errors } = parseMembersCsv(csv);
+
+    expect(errors).toEqual([]);
+    expect(members[0].firstName).toBe('Iñigo');
+  });
+});

@@ -17,7 +17,8 @@ import {
   SIDE_MARK,
   SIDE_PREFERENCE_LABEL,
 } from '@/utils/format';
-import { downloadTextFile, membersToCsv } from '@/utils/csv';
+import { membersToCsv } from '@/utils/csv';
+import { downloadTextFile } from '@/utils/download';
 
 type SortKey = 'name' | 'weight' | 'side';
 
