@@ -18,6 +18,7 @@ import {
   useMemberAvailability,
   useUndoableDelete,
 } from '@/queries/hooks';
+import { ZONE_LABELS } from '@/domain/boat';
 import { categoryName, fullName, formatWeight, GENDER_LABEL, SIDE_PREFERENCE_LABEL } from '@/utils/format';
 
 const ROLE_LABEL: Record<CrewRole, string> = {
@@ -86,6 +87,12 @@ export function MemberDetailPage() {
           <dl className="flex flex-col gap-2 text-sm">
             <Row label="Weight" value={formatWeight(m.weightKg)} />
             <Row label="Side" value={SIDE_PREFERENCE_LABEL[m.sidePreference]} />
+            {m.preferredZones && m.preferredZones.length > 0 && (
+              <Row
+                label="Zones"
+                value={m.preferredZones.map((z) => ZONE_LABELS[z]).join(', ')}
+              />
+            )}
             <Row
               label="Other roles"
               value={

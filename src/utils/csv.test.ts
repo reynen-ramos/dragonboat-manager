@@ -304,3 +304,37 @@ describe('formula-guard round trip', () => {
     expect(members[0].notes).toBe("'tis the season");
   });
 });
+
+describe('preferred zones', () => {
+  it('imports forgiving spellings', () => {
+    const { members } = parseMembersCsv(
+      'First name,Gender,Zones\nAna,F,Stroke / Engine room\nBen,M,back\n',
+    );
+
+    expect(members[0].preferredZones).toEqual(['stroke', 'engine']);
+    expect(members[1].preferredZones).toEqual(['rockets']);
+  });
+
+  it('leaves the field absent rather than guessing at nonsense', () => {
+    const { members } = parseMembersCsv('First name,Gender,Zones\nAna,F,wherever\n');
+
+    expect(members[0].preferredZones).toBeUndefined();
+  });
+
+  it('round-trips through export', () => {
+    const member: Member = {
+      id: 'm1',
+      firstName: 'Ana',
+      lastName: 'Reyes',
+      gender: 'female',
+      sidePreference: 'left',
+      canDrum: false,
+      canSteer: false,
+      status: 'active',
+      preferredZones: ['stroke', 'rockets'],
+    };
+    const { members } = parseMembersCsv(membersToCsv([member]));
+
+    expect(members[0].preferredZones).toEqual(['stroke', 'rockets']);
+  });
+});
