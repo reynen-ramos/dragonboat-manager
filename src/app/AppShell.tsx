@@ -1,6 +1,7 @@
 import { CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { Spinner } from '@/components/ui/misc';
 import { Toaster } from '@/components/ui/Toaster';
 import { useExternalStorageSync, useStorageWarnings } from '@/queries/hooks';
 import { cn } from '@/utils/cn';
@@ -35,7 +36,10 @@ export function AppShell() {
       </a>
       <Sidebar />
       <main id="main" className="min-w-0 flex-1 px-4 pb-24 pt-5 sm:px-8 sm:pb-10">
-        <Outlet />
+        {/* Pages are lazy chunks; the fallback shows while one is fetched. */}
+        <Suspense fallback={<Spinner />}>
+          <Outlet />
+        </Suspense>
       </main>
       <BottomBar />
       <Toaster />

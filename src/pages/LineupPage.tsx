@@ -20,6 +20,7 @@ import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/Bala
 import { BoatView, type SeatedOccupant } from '@/components/boat/BoatView';
 import { FillBoatDialog } from '@/components/boat/FillBoatDialog';
 import { CrewSheet } from '@/components/boat/CrewSheet';
+import { boatCoordinateGetter } from '@/components/boat/boatKeyboard';
 import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
 import { RosterPanel } from '@/components/boat/RosterPanel';
@@ -46,7 +47,7 @@ import {
   useReplaceCrewLineup,
   useUpdateAssignment,
 } from '@/queries/hooks';
-import { CrewResults } from '@/pages/RaceDayPage';
+import { CrewResults } from '@/components/races/CrewResults';
 import { useLineupHistory } from '@/stores/lineupHistory';
 import { categoryName } from '@/utils/format';
 
@@ -242,7 +243,8 @@ export function LineupPage() {
     // A small distance threshold keeps a tap from registering as a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
-    useSensor(KeyboardSensor),
+    // The custom getter moves seat-to-seat; the default nudges 25px per press.
+    useSensor(KeyboardSensor, { coordinateGetter: boatCoordinateGetter }),
   );
 
   // `event` belongs in both guards: it is read below, and leaving it out fell
