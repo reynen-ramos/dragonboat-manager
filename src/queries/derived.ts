@@ -8,12 +8,18 @@ import type {
   Category,
   Member,
 } from '@/domain/types';
+import { buildMemberHistory } from '@/domain/memberHistory';
+import { todayIso } from '@/domain/dates';
 import { validateCrew, type Issue } from '@/domain/validation';
 import {
   useAllAssignments,
+  useAllCategories,
   useAllCrews,
   useAssignments,
   useAvailability,
+  useEvents,
+  useMemberAssignments,
+  useMemberAvailability,
   useMembers,
   useSettings,
 } from './hooks';
@@ -188,4 +194,43 @@ export function useCrewBalance(crewId: string | undefined, category: Category | 
     () => (category ? computeBalance(lineup.seated, category.boatSize, settings) : undefined),
     [lineup.seated, category, settings],
   );
+}
+
+/**
+ * A member's history: every event they were seated at or answered for, split
+ * into past and upcoming, with season totals. One pass over four collections
+ * instead of the previous three chained queries per row.
+ */
+export function useMemberHistory(memberId: string | undefined) {
+  const events = useEvents();
+  const categories = useAllCategories();
+  const crews = useAllCrews();
+  const assignments = useMemberAssignments(memberId);
+  const availability = useMemberAvailability(memberId);
+
+  const queries = [events, categories, crews, assignments, availability];
+  const isLoading = queries.some((q) => q.isLoading);
+  const isError = queries.some((q) => q.isError);
+
+  const history = useMemo(
+    () =>
+      buildMemberHistory({
+        today: todayIso(),
+        events: events.data ?? [],
+        categories: categories.data ?? [],
+        crews: crews.data ?? [],
+        assignments: assignments.data ?? [],
+        availability: availability.data ?? [],
+      }),
+    [events.data, categories.data, crews.data, assignments.data, availability.data],
+  );
+
+  return {
+    ...history,
+    isLoading,
+    isError,
+    refetch: () => {
+      for (const q of queries) void q.refetch();
+    },
+  };
 }

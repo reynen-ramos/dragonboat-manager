@@ -70,6 +70,9 @@ export const useCategories = (eventId: string | undefined) =>
     enabled: Boolean(eventId),
   });
 
+export const useAllCategories = () =>
+  useQuery({ queryKey: keys.categories.all, queryFn: () => adapter.categories.list() });
+
 export const useCategory = (id: string | undefined) =>
   useQuery({
     queryKey: keys.categories.detail(id ?? ''),
