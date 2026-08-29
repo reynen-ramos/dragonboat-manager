@@ -149,49 +149,104 @@ const BODY_DEEP = 'var(--color-brand-700)';
 const DECK = 'var(--color-brand-100)';
 const TRIM = 'var(--color-brand-300)';
 
-/** The head in profile, facing forward: open jaw, horn, mane, whisker. */
+/**
+ * The bow: the hull tapering to its prow, with the dragon head mounted on it
+ * in profile. Composed from separate primitives — jaws, teeth, eye, horn,
+ * mane — rather than one outline path; organic shapes drawn as a single
+ * freehand path came out wobbly, and separate pieces can each be placed and
+ * judged on their own.
+ */
 function DragonHead() {
   return (
-    <svg viewBox="0 0 64 58" className="w-full shrink-0" style={{ aspectRatio: '64 / 58' }}>
-      {/* Neck, rising out of the bow. */}
+    <svg
+      viewBox="0 0 64 74"
+      className="w-full shrink-0 overflow-visible"
+      style={{ aspectRatio: '64 / 74' }}
+    >
+      {/* Bow: the hull sides converging on the prow. */}
       <path
-        d="M26 58 C25 48, 26 40, 30 33 L40 36 C38 44, 38 51, 39 58 Z"
+        d="M18 74 C18 58, 22 46, 30 38 L34 38 C42 46, 46 58, 46 74 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M23 74 C23 60, 26 50, 31 44 L33 44 C38 50, 41 60, 41 74 Z"
+        fill={DECK}
+        stroke={INK}
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Neck: a stout post from the prow up to the skull. */}
+      <path
+        d="M27 42 L26 26 L38 26 L37 42 Z"
         fill={BODY}
         stroke={INK}
         strokeWidth="1.6"
         strokeLinejoin="round"
       />
-      {/* Mane spikes down the back of the neck. */}
+      {/* Mane: spikes off the back of the neck and skull. */}
       <path
-        d="M40 36 L46 33 L41 41 L47 40 L42 48 L46 49 L41 54"
+        d="M38 27 L46 24 L39 32 L46 33 L38 38 Z"
         fill={BODY_DEEP}
         stroke={INK}
-        strokeWidth="1.2"
+        strokeWidth="1.4"
         strokeLinejoin="round"
       />
-      {/* Skull and open jaws, facing left. */}
+      {/* Lower jaw, open. */}
       <path
-        d="M30 34 C22 33, 16 28, 13 22 L3 19 L10 15 C14 8, 22 4, 30 5 C38 6, 43 12, 43 20 C43 27, 38 33, 30 34 Z"
+        d="M28 24 L12 27 C9 27.5, 9 30.5, 12 30.5 L26 29 Z"
+        fill={BODY_DEEP}
+        stroke={INK}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Mouth interior. */}
+      <path d="M28 20 L10 24 L13 28 L28 24 Z" fill={DECK} />
+      {/* Skull and upper jaw: a long snout, slightly upturned at the tip. */}
+      <path
+        d="M40 26 C43 20, 43 12, 38 8 C34 5, 26 4.5, 20 7 L8 12 C6 13, 6 15.5, 8 16.5 L12 18.5 L26 22 C32 24, 37 25.5, 40 26 Z"
         fill={BODY}
         stroke={INK}
         strokeWidth="1.6"
         strokeLinejoin="round"
       />
-      {/* The open mouth: pale inside, teeth top and bottom. */}
-      <path d="M13 22 L3 19 L10 15 C12 17, 13 19, 13 22 Z" fill={DECK} stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M10.5 15.5 L11.5 18 L8.5 17 Z M6 17.5 L7.5 19.5 L4.8 19 Z" fill="white" stroke={INK} strokeWidth="0.6" />
-      <path d="M12 21.5 L10 20.6 L8 21.2 Z" fill="white" stroke={INK} strokeWidth="0.6" />
-      {/* Snout curl. */}
-      <path d="M10 13.5 C7 12.5, 5.5 13.5, 5.5 15.5" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
-      {/* Whisker. */}
-      <path d="M6 20.5 C2.5 22.5, 2 26, 4.5 28" fill="none" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
-      {/* Horn, swept back. */}
-      <path d="M33 6 C34 2, 39 0.5, 44 2 C40 4, 38 7, 38 10 Z" fill={DECK} stroke={INK} strokeWidth="1.3" strokeLinejoin="round" />
-      {/* Eye. */}
-      <circle cx="24" cy="15" r="3" fill="white" stroke={INK} strokeWidth="1.2" />
-      <circle cx="23.4" cy="15.4" r="1.3" fill={INK} />
-      {/* Brow flare. */}
-      <path d="M19 11 C21 9.4, 24 9, 27 9.8" fill="none" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Teeth along the upper jaw. */}
+      <path
+        d="M13 18 L14.5 21.5 L17 19 Z M19 20 L20.5 23.5 L23 21 Z"
+        fill="white"
+        stroke={INK}
+        strokeWidth="0.7"
+        strokeLinejoin="round"
+      />
+      {/* One fang on the lower jaw. */}
+      <path d="M16 27 L17.5 24 L19.5 27 Z" fill="white" stroke={INK} strokeWidth="0.7" strokeLinejoin="round" />
+      {/* Nose curl at the snout tip. */}
+      <path d="M9 11 C6 9.5, 3.5 10.5, 3 13" fill="none" stroke={INK} strokeWidth="1.5" strokeLinecap="round" />
+      {/* Whisker trailing from the jaw. */}
+      <path d="M10 29 C6 31, 4.5 34.5, 6.5 37.5" fill="none" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
+      {/* Horns, swept back off the skull. */}
+      <path
+        d="M33 7 L38 -2 C39 -3.5, 41 -3, 41 -1 L40 8 Z"
+        fill={DECK}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M39 10 L47 4 C48.5 3, 50 4.5, 49 6 L42 14 Z"
+        fill={DECK}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      {/* Eye, watching the course. */}
+      <circle cx="31" cy="13.5" r="3.4" fill="white" stroke={INK} strokeWidth="1.3" />
+      <circle cx="30.2" cy="14" r="1.6" fill={INK} />
+      <circle cx="31.1" cy="12.9" r="0.6" fill="white" />
+      {/* Brow ridge. */}
+      <path d="M26 9.5 C28.5 8, 32 8, 34.5 9.5" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -248,32 +303,80 @@ function HullMidsection() {
   );
 }
 
-/** The stern in profile: hull tapering away, a finned tail, the steering oar. */
+/**
+ * The stern: hull tapering to the sternpost, the tail rising off it as a
+ * clean S-curve ending in a three-lobed fluke, and the steering oar to port.
+ * Same discipline as the head: separate simple pieces, not one outline.
+ */
 function DragonTail() {
   return (
-    <svg viewBox="0 0 64 52" className="w-full shrink-0" style={{ aspectRatio: '64 / 52' }}>
-      {/* Hull tapering to the sternpost. */}
+    <svg
+      viewBox="0 0 64 62"
+      className="w-full shrink-0 overflow-visible"
+      style={{ aspectRatio: '64 / 62' }}
+    >
+      {/* Stern: the hull sides converging on the sternpost. */}
       <path
-        d="M18 0 C19 10, 23 17, 30 21 L34 21 C41 17, 45 10, 46 0 Z"
+        d="M18 0 C18 14, 22 24, 30 30 L34 30 C42 24, 46 14, 46 0 Z"
         fill={BODY}
         stroke={INK}
-        strokeWidth="1.8"
+        strokeWidth="2"
         strokeLinejoin="round"
       />
-      <path d="M24 0 C25 7, 27 12, 31 15 L33 15 C37 12, 39 7, 40 0 Z" fill={DECK} stroke={INK} strokeOpacity="0.35" strokeWidth="1" />
-      {/* The tail rising off the stern, finned like the head's mane. */}
       <path
-        d="M31 20 C30 27, 32 33, 38 37 C36 30, 40 27, 45 27 C41 24, 42 20, 47 18 C42 17, 41 13, 44 9 C38 12, 33 15, 32 20 Z"
+        d="M23 0 C23 12, 26 20, 31 25 L33 25 C38 20, 41 12, 41 0 Z"
+        fill={DECK}
+        stroke={INK}
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* The tail: one thick S-curve, thinning as it rises. */}
+      <path
+        d="M30 29 C28 36, 30 42, 36 46 C42 50, 44 54, 42 58 L46 56 C49 52, 47 46, 41 42 C36 38.5, 34 34, 35 29 Z"
         fill={BODY_DEEP}
         stroke={INK}
-        strokeWidth="1.5"
+        strokeWidth="1.6"
         strokeLinejoin="round"
       />
-      {/* Tail tip flame. */}
-      <path d="M38 37 C41 41, 41 45, 38 49 C44 47, 48 42, 47 36 C45 38, 41 38, 38 37 Z" fill={BODY} stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
-      {/* The steering oar, trailing off the port quarter. */}
-      <path d="M26 14 L12 34" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 34 C8.5 38, 8.5 43, 12 46 C15 43, 15.5 38, 12 34 Z" fill={BODY} stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+      {/* The fluke: three lobes fanning from the tail tip. */}
+      <path
+        d="M43 57 L52 50 C53.5 49, 55 50.5, 54 52 L48 60 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M44 59 L55 57 C56.5 57, 56.5 59.5, 55 60 L45 62 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M42 60 L48 66 C49 67.5, 47 69, 45.5 68 L39 62 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      {/* The steering oar, trailing to port. */}
+      <path d="M27 22 L13 42" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+      <path
+        d="M13 42 C9.5 46, 9.5 52, 13 55 C16.5 52, 16.5 46, 13 42 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      {/* Wake off the sternpost. */}
+      <path
+        d="M24 34 C28 36.5, 36 36.5, 40 34 M27 39 C30 41, 34 41, 37 39"
+        fill="none"
+        stroke={TRIM}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
