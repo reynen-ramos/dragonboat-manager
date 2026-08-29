@@ -56,6 +56,7 @@ export default defineConfig({
           environment: 'jsdom',
           include: [
             'src/**/*.test.tsx',
+            'src/components/**/*.test.ts',
             'src/data/**/*.test.ts',
             'src/stores/**/*.test.ts',
           ],
