@@ -5,21 +5,14 @@ import { MemberForm } from '@/components/members/MemberForm';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
-import { seatLabel } from '@/domain/boat';
+import { seatLabel, SIDE_LABELS } from '@/domain/boat';
 import { ageOn, formatDate, todayIso } from '@/domain/dates';
-import type { Assignment, CrewRole } from '@/domain/types';
-import {
-  useCategory,
-  useCrew,
-  useDeleteMember,
-  useEvent,
-  useMember,
-  useMemberAssignments,
-  useMemberAvailability,
-  useUndoableDelete,
-} from '@/queries/hooks';
+import type { MemberHistoryRow } from '@/domain/memberHistory';
+import type { CrewRole } from '@/domain/types';
+import { useMemberHistory } from '@/queries/derived';
+import { useDeleteMember, useMember, useUndoableDelete } from '@/queries/hooks';
 import { ZONE_LABELS } from '@/domain/boat';
-import { categoryName, fullName, formatWeight, GENDER_LABEL, SIDE_PREFERENCE_LABEL } from '@/utils/format';
+import { categoryName, fullName, formatWeight, GENDER_LABEL, pluralise, SIDE_PREFERENCE_LABEL } from '@/utils/format';
 
 const ROLE_LABEL: Record<CrewRole, string> = {
   paddler: 'Paddler',
@@ -32,8 +25,7 @@ export function MemberDetailPage() {
   const { memberId } = useParams();
   const navigate = useNavigate();
   const member = useMember(memberId);
-  const assignments = useMemberAssignments(memberId);
-  const availability = useMemberAvailability(memberId);
+  const history = useMemberHistory(memberId);
   const deleteMember = useDeleteMember();
   const undoableDelete = useUndoableDelete();
   const [editing, setEditing] = useState(false);
@@ -47,8 +39,7 @@ export function MemberDetailPage() {
 
   const m = member.data;
   const age = m.dateOfBirth ? ageOn(m.dateOfBirth, todayIso()) : undefined;
-  const attendance = availability.data ?? [];
-  const attended = attendance.filter((a) => a.status === 'in').length;
+  const { summary } = history;
 
   return (
     <>
@@ -102,10 +93,26 @@ export function MemberDetailPage() {
               }
             />
             {m.joinedAt && <Row label="Joined" value={formatDate(m.joinedAt)} />}
-            {attendance.length > 0 && (
+            {(summary.racesCrewed > 0 || summary.practicesCrewed > 0) && (
               <Row
-                label="Availability"
-                value={`Said yes to ${attended} of ${attendance.length} events`}
+                label="Season"
+                value={[
+                  summary.racesCrewed > 0 ? pluralise(summary.racesCrewed, 'race') : null,
+                  summary.practicesCrewed > 0
+                    ? pluralise(summary.practicesCrewed, 'practice')
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+            )}
+            {summary.asked > 0 && (
+              <Row label="Said In" value={`${summary.saidIn} of ${summary.asked} asked`} />
+            )}
+            {summary.usualSpot && (
+              <Row
+                label="Usual spot"
+                value={`${ZONE_LABELS[summary.usualSpot.zone]}, ${SIDE_LABELS[summary.usualSpot.side].toLowerCase()}`}
               />
             )}
           </dl>
@@ -125,22 +132,48 @@ export function MemberDetailPage() {
         </Card>
       </div>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          Crew history
-        </h2>
-        {assignments.isLoading ? (
+      {history.isError ? (
+        <section className="mt-8">
+          <LoadFailed onRetry={history.refetch} />
+        </section>
+      ) : history.isLoading ? (
+        <section className="mt-8">
           <Spinner />
-        ) : (assignments.data ?? []).length === 0 ? (
-          <EmptyState title="Not in any crew yet" />
-        ) : (
-          <div className="flex flex-col gap-2">
-            {(assignments.data ?? []).map((assignment) => (
-              <CrewHistoryRow key={assignment.id} assignment={assignment} />
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <>
+          {history.upcoming.length > 0 && (
+            <section className="mt-8">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+                Coming up
+              </h2>
+              <div className="flex flex-col gap-2">
+                {history.upcoming.map((row) => (
+                  <HistoryRow key={row.event.id} row={row} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="mt-8">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+              History
+            </h2>
+            {history.past.length === 0 ? (
+              <EmptyState
+                title="No history yet"
+                description="Past events they were seated at or answered for will collect here."
+              />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {history.past.map((row) => (
+                  <HistoryRow key={row.event.id} row={row} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
 
       {editing && (
         <MemberForm member={m} open onOpenChange={(open) => !open && setEditing(false)} />
@@ -189,29 +222,35 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CrewHistoryRow({ assignment }: { assignment: Assignment }) {
-  const crew = useCrew(assignment.crewId);
-  const category = useCategory(crew.data?.categoryId);
-  const event = useEvent(category.data?.eventId);
+const STATUS_TONE = { in: 'good', maybe: 'warn', out: 'bad' } as const;
+const STATUS_LABEL = { in: 'In', maybe: 'Maybe', out: 'Out' } as const;
 
-  if (!crew.data || !category.data || !event.data) return null;
-
+function HistoryRow({ row }: { row: MemberHistoryRow }) {
+  const { event, status, participations } = row;
   return (
-    <Link
-      to={`/events/${event.data.id}/crews/${crew.data.id}`}
-      className="surface flex items-center justify-between gap-3 rounded-xl border px-4 py-3 hover:surface-sunken"
-    >
+    <div className="surface flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border px-4 py-3">
       <div className="min-w-0">
-        <p className="truncate font-medium">
-          {event.data.name} · {crew.data.name}
-        </p>
+        <p className="truncate font-medium">{event.name}</p>
         <p className="truncate text-sm text-muted">
-          {categoryName(category.data)} · {formatDate(event.data.startDate)}
+          {formatDate(event.startDate)}
+          {event.type === 'practice' ? ' · practice' : ''}
         </p>
       </div>
-      <Badge tone={assignment.role === 'reserve' ? 'neutral' : 'brand'}>
-        {assignment.seat ? seatLabel(assignment.seat) : ROLE_LABEL[assignment.role]}
-      </Badge>
-    </Link>
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {status && <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>}
+        {participations.map((p) => (
+          <Link
+            key={p.crew.id + p.role}
+            to={`/events/${event.id}/crews/${p.crew.id}`}
+            title={categoryName(p.category)}
+            className="rounded-md focus:outline-none"
+          >
+            <Badge tone={p.role === 'reserve' ? 'neutral' : 'brand'}>
+              {p.crew.name}: {p.seat ? seatLabel(p.seat) : ROLE_LABEL[p.role]}
+            </Badge>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
