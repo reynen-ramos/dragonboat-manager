@@ -111,159 +111,136 @@ export function BoatView({
 }
 
 /**
- * A dragon boat seen from above: head at the bow, scaled gunwales down the
- * sides, a curled tail and steering oar at the stern.
+ * The boat itself: a slim racing canoe down the centre spine, true to a real
+ * dragon boat's proportions, with the seat cards flanking it.
  *
- * Three pieces, because the boat stretches with its row count and a drawing
- * must not. The head and tail keep their aspect ratio; only the midsection
- * stretches — its rails stretch harmlessly, and its scale pattern stays
- * uniform because that SVG is cropped (`slice`) from a tall viewBox rather
- * than scaled to fit. Everything is currentColor at low opacity, so both
- * themes work and the seats stay legible on top.
+ * The first version drew a hull wide enough to contain the cards, and it read
+ * as a barge — a real dragon boat from above is a narrow sliver. So the cards
+ * moved outside and the boat got its silhouette back: benches per row on a
+ * pale deck, painted scales along both gunwales, and paddles reaching from
+ * each occupied side out toward its card. The head and tail are drawn in
+ * profile, the way this kind of illustration always cheats them, because a
+ * top-view skull never reads as a dragon.
+ *
+ * Head and tail keep their aspect ratio; only the midsection stretches with
+ * the row count, its patterns kept uniform by cropping (`slice`) a tall
+ * viewBox rather than scaling it. Colours are the brand teals — bold, since
+ * nothing has to stay legible on top of the narrow hull — and amber/red stay
+ * reserved for warnings.
  */
 function Hull() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex flex-col text-brand-600"
+      className="pointer-events-none absolute inset-y-0 left-1/2 w-16 -translate-x-1/2"
       aria-hidden="true"
     >
-      <DragonHead />
-      <HullMidsection />
-      <DragonTail />
+      <div className="flex h-full flex-col">
+        <DragonHead />
+        <HullMidsection />
+        <DragonTail />
+      </div>
     </div>
   );
 }
 
-/** The bow: skull and snout forward of the hull, horns swept back, whiskers. */
+const INK = 'var(--color-brand-900)';
+const BODY = 'var(--color-brand-600)';
+const BODY_DEEP = 'var(--color-brand-700)';
+const DECK = 'var(--color-brand-100)';
+const TRIM = 'var(--color-brand-300)';
+
+/** The head in profile, facing forward: open jaw, horn, mane, whisker. */
 function DragonHead() {
   return (
-    <svg viewBox="0 0 100 26" className="w-full shrink-0" style={{ aspectRatio: '100 / 26' }}>
-      {/* Hull sides converging on the prow the head mounts to. */}
+    <svg viewBox="0 0 64 58" className="w-full shrink-0" style={{ aspectRatio: '64 / 58' }}>
+      {/* Neck, rising out of the bow. */}
       <path
-        d="M8 26 C8.5 18, 12 13, 22 10.5 C32 8.4, 40 7.8, 45 7.8 L55 7.8 C60 7.8, 68 8.4, 78 10.5 C88 13, 91.5 18, 92 26 Z"
-        fill="currentColor"
-        fillOpacity="0.17"
-        stroke="currentColor"
-        strokeOpacity="0.5"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
+        d="M26 58 C25 48, 26 40, 30 33 L40 36 C38 44, 38 51, 39 58 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
       />
-      {/* Skull and snout, forward of the prow. */}
+      {/* Mane spikes down the back of the neck. */}
       <path
-        d="M44.5 7.8 C40.5 5.6, 40.5 2.4, 45 1.1 C48 0.3, 52 0.3, 55 1.1 C59.5 2.4, 59.5 5.6, 55.5 7.8 C52 9, 48 9, 44.5 7.8 Z"
-        fill="currentColor"
-        fillOpacity="0.42"
-        stroke="currentColor"
-        strokeOpacity="0.6"
+        d="M40 36 L46 33 L41 41 L47 40 L42 48 L46 49 L41 54"
+        fill={BODY_DEEP}
+        stroke={INK}
         strokeWidth="1.2"
-        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
       />
-      {/* Horns, swept back over the hull. */}
+      {/* Skull and open jaws, facing left. */}
       <path
-        d="M43.8 4.4 C35 4.6, 29 7, 26 11.5 M56.2 4.4 C65 4.6, 71 7, 74 11.5"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.55"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
+        d="M30 34 C22 33, 16 28, 13 22 L3 19 L10 15 C14 8, 22 4, 30 5 C38 6, 43 12, 43 20 C43 27, 38 33, 30 34 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
       />
-      {/* Whiskers curling off the snout. */}
-      <path
-        d="M45.2 2 C40 1.1, 36.5 2.3, 35.2 5.2 M54.8 2 C60 1.1, 63.5 2.3, 64.8 5.2"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.45"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      {/* Mane crest running back between the horns. */}
-      <path
-        d="M47 8.6 L46 11 M50 9 L50 11.6 M53 8.6 L54 11"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.4"
-        strokeWidth="1"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle cx="46.4" cy="4.2" r="1.1" fill="currentColor" fillOpacity="0.7" />
-      <circle cx="53.6" cy="4.2" r="1.1" fill="currentColor" fillOpacity="0.7" />
-      <circle cx="48.3" cy="1.4" r="0.55" fill="currentColor" fillOpacity="0.55" />
-      <circle cx="51.7" cy="1.4" r="0.55" fill="currentColor" fillOpacity="0.55" />
+      {/* The open mouth: pale inside, teeth top and bottom. */}
+      <path d="M13 22 L3 19 L10 15 C12 17, 13 19, 13 22 Z" fill={DECK} stroke={INK} strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M10.5 15.5 L11.5 18 L8.5 17 Z M6 17.5 L7.5 19.5 L4.8 19 Z" fill="white" stroke={INK} strokeWidth="0.6" />
+      <path d="M12 21.5 L10 20.6 L8 21.2 Z" fill="white" stroke={INK} strokeWidth="0.6" />
+      {/* Snout curl. */}
+      <path d="M10 13.5 C7 12.5, 5.5 13.5, 5.5 15.5" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+      {/* Whisker. */}
+      <path d="M6 20.5 C2.5 22.5, 2 26, 4.5 28" fill="none" stroke={INK} strokeWidth="1.2" strokeLinecap="round" />
+      {/* Horn, swept back. */}
+      <path d="M33 6 C34 2, 39 0.5, 44 2 C40 4, 38 7, 38 10 Z" fill={DECK} stroke={INK} strokeWidth="1.3" strokeLinejoin="round" />
+      {/* Eye. */}
+      <circle cx="24" cy="15" r="3" fill="white" stroke={INK} strokeWidth="1.2" />
+      <circle cx="23.4" cy="15.4" r="1.3" fill={INK} />
+      {/* Brow flare. */}
+      <path d="M19 11 C21 9.4, 24 9, 27 9.8" fill="none" stroke={INK} strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
 
 /**
- * The stretch-tolerant part: side rails, painted scales, dashed keel line.
- *
- * `slice` on a tall viewBox means the width fits and the excess height is
- * cropped, so the scales keep their shape whether the boat has five rows or
- * ten — `none` would stretch each scale with the row count.
+ * The stretch-tolerant hull: gunwales, pale deck, scales, ripples alongside.
+ * `slice` on a tall viewBox keeps every pattern uniform whether the boat has
+ * five rows or ten; `none` would stretch the scales with the row count.
  */
 function HullMidsection() {
   return (
     <div className="min-h-0 w-full flex-1 overflow-hidden">
-      <svg
-        viewBox="0 0 100 600"
-        preserveAspectRatio="xMidYMin slice"
-        className="h-full w-full"
-      >
+      <svg viewBox="0 0 64 600" preserveAspectRatio="xMidYMin slice" className="h-full w-full">
         <defs>
-          <pattern id="hull-scales" width="4.4" height="5.2" patternUnits="userSpaceOnUse">
-            <path
-              d="M0 5.2 A2.2 3 0 0 1 4.4 5.2"
-              fill="none"
-              stroke="currentColor"
-              strokeOpacity="0.45"
-              strokeWidth="0.7"
-            />
+          <pattern id="gunwale-scales" width="7" height="6" patternUnits="userSpaceOnUse">
+            <path d="M0 6 A3.5 4 0 0 1 7 6" fill="none" stroke={INK} strokeOpacity="0.5" strokeWidth="0.9" />
           </pattern>
         </defs>
-        {/* Hull fill between the rails. */}
-        <rect x="8" y="0" width="84" height="600" fill="currentColor" fillOpacity="0.15" />
+        {/* Hull sides. */}
+        <rect x="18" y="0" width="28" height="600" fill={BODY} />
+        {/* The deck the benches sit on. */}
+        <rect x="23" y="0" width="18" height="600" fill={DECK} />
         {/* Painted scales along both gunwales. */}
-        <rect x="8.6" y="0" width="4.4" height="600" fill="url(#hull-scales)" />
-        <rect x="87" y="0" width="4.4" height="600" fill="url(#hull-scales)" />
-        {/* Outer hull edge and inner gunwale, each side. */}
-        {[8, 92].map((x) => (
-          <line
-            key={`hull-${x}`}
-            x1={x}
-            y1="0"
-            x2={x}
-            y2="600"
-            stroke="currentColor"
-            strokeOpacity="0.45"
-            strokeWidth="1.5"
-            vectorEffect="non-scaling-stroke"
-          />
+        <rect x="18" y="0" width="5" height="600" fill="url(#gunwale-scales)" />
+        <rect x="41" y="0" width="5" height="600" fill="url(#gunwale-scales)" />
+        {/* Gunwale edges. */}
+        {[18, 46].map((x) => (
+          <line key={x} x1={x} y1="0" x2={x} y2="600" stroke={INK} strokeWidth="2" vectorEffect="non-scaling-stroke" />
         ))}
-        {[13.6, 86.4].map((x) => (
-          <line
-            key={`gunwale-${x}`}
-            x1={x}
-            y1="0"
-            x2={x}
-            y2="600"
-            stroke="currentColor"
-            strokeOpacity="0.3"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
+        {[23, 41].map((x) => (
+          <line key={x} x1={x} y1="0" x2={x} y2="600" stroke={INK} strokeOpacity="0.35" strokeWidth="1" vectorEffect="non-scaling-stroke" />
         ))}
-        {/* The keel line down the centre of the deck. */}
-        <line
-          x1="50"
-          y1="0"
-          x2="50"
-          y2="600"
-          stroke="currentColor"
-          strokeOpacity="0.3"
-          strokeWidth="1"
-          strokeDasharray="4 6"
+        {/* Water alongside. */}
+        <path
+          d="M10 8 C7 16, 13 24, 10 32 C7 40, 13 48, 10 56 C7 64, 13 72, 10 80"
+          fill="none"
+          stroke={TRIM}
+          strokeOpacity="0.8"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d="M54 40 C51 48, 57 56, 54 64 C51 72, 57 80, 54 88 C51 96, 57 104, 54 112"
+          fill="none"
+          stroke={TRIM}
+          strokeOpacity="0.8"
+          strokeWidth="1.4"
+          strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
         />
       </svg>
@@ -271,48 +248,94 @@ function HullMidsection() {
   );
 }
 
-/** The stern: hull tapering in, a curled tail, and the steering oar. */
+/** The stern in profile: hull tapering away, a finned tail, the steering oar. */
 function DragonTail() {
   return (
-    <svg viewBox="0 0 100 24" className="w-full shrink-0" style={{ aspectRatio: '100 / 24' }}>
+    <svg viewBox="0 0 64 52" className="w-full shrink-0" style={{ aspectRatio: '64 / 52' }}>
+      {/* Hull tapering to the sternpost. */}
       <path
-        d="M8 0 C8.5 7, 12 12, 22 14.5 C32 16.6, 40 17.2, 45 17.2 L55 17.2 C60 17.2, 68 16.6, 78 14.5 C88 12, 91.5 7, 92 0 Z"
-        fill="currentColor"
-        fillOpacity="0.17"
-        stroke="currentColor"
-        strokeOpacity="0.5"
+        d="M18 0 C19 10, 23 17, 30 21 L34 21 C41 17, 45 10, 46 0 Z"
+        fill={BODY}
+        stroke={INK}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M24 0 C25 7, 27 12, 31 15 L33 15 C37 12, 39 7, 40 0 Z" fill={DECK} stroke={INK} strokeOpacity="0.35" strokeWidth="1" />
+      {/* The tail rising off the stern, finned like the head's mane. */}
+      <path
+        d="M31 20 C30 27, 32 33, 38 37 C36 30, 40 27, 45 27 C41 24, 42 20, 47 18 C42 17, 41 13, 44 9 C38 12, 33 15, 32 20 Z"
+        fill={BODY_DEEP}
+        stroke={INK}
         strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
       />
-      {/* The tail, curling wide of the stern. */}
-      <path
-        d="M52 17.2 C52.5 19.6, 54.5 21.4, 58 22 C64 23, 69.5 21.4, 71.5 18 C73.2 15, 72 11.6, 68.8 10.6 C66.4 9.9, 64 11, 63.2 13 C62.6 14.6, 63.5 16.2, 65.2 16.6"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.55"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
+      {/* Tail tip flame. */}
+      <path d="M38 37 C41 41, 41 45, 38 49 C44 47, 48 42, 47 36 C45 38, 41 38, 38 37 Z" fill={BODY} stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+      {/* The steering oar, trailing off the port quarter. */}
+      <path d="M26 14 L12 34" fill="none" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 34 C8.5 38, 8.5 43, 12 46 C15 43, 15.5 38, 12 34 Z" fill={BODY} stroke={INK} strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/**
+ * The bench between the two seats of a row: number on the deck, and a paddle
+ * reaching out toward each occupied card — the boat is rowed by whoever is
+ * actually seated.
+ */
+function BenchCell({
+  row,
+  leftOccupied,
+  rightOccupied,
+}: {
+  row: number;
+  leftOccupied: boolean;
+  rightOccupied: boolean;
+}) {
+  return (
+    <div className="relative flex h-11 w-16 shrink-0 items-center justify-center">
+      <div
+        className="absolute h-[7px] rounded-full"
+        style={{ left: 19, right: 19, background: TRIM }}
       />
-      {/* Fin spines along the curl. */}
-      <path
-        d="M56 21.6 L55.2 23.8 M60.5 22.3 L60.7 24 M65.6 21.9 L66.8 23.6 M70.4 19.4 L72.2 20.6"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.5"
-        strokeWidth="1.1"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
-      {/* The steering oar, trailing long off the port quarter. */}
-      <path
-        d="M44 14.5 L28 22.5 M28 22.5 C25.8 23.7, 23.6 23.4, 22.4 22 M28 22.5 C26.9 20.9, 27.2 19.2, 28.8 18.2"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.4"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
+      {leftOccupied && <Paddle side="left" />}
+      {rightOccupied && <Paddle side="right" />}
+      <span
+        className="tabular relative text-[0.65rem] font-semibold"
+        style={{ color: INK }}
+      >
+        {row}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Drawn entirely outboard — from the gunwale out over the water toward the
+ * paddler's card — and mirrored with a transform so both sides share one
+ * geometry. The first version reached across the deck and came out
+ * asymmetric: the left blade hid under the hull while the right one showed.
+ */
+function Paddle({ side }: { side: Side }) {
+  return (
+    <svg
+      viewBox="0 0 22 14"
+      className={cn(
+        'pointer-events-none absolute top-1/2 h-4 w-6 -translate-y-1/2 overflow-visible',
+        side === 'left' ? 'left-[-5px]' : 'right-[-5px] -scale-x-100',
+      )}
+      aria-hidden="true"
+    >
+      <path d="M21 3.5 L8 9.5" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
+      <ellipse
+        cx="4.5"
+        cy="11"
+        rx="5.2"
+        ry="3.1"
+        transform="rotate(-24 4.5 11)"
+        fill={BODY_DEEP}
+        stroke={INK}
+        strokeWidth="1.2"
       />
     </svg>
   );
@@ -338,17 +361,22 @@ function BoatRow({
   return (
     <div className="relative">
       {showZoneLabel && (
-        <p className="mb-1 mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
-          {ZONE_LABELS[zone]}
+        <p className="mb-1 mt-2 flex justify-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
+          {/* A solid pill, or the label is struck through by the hull behind it. */}
+          <span className="surface rounded-full border border-subtle px-2 py-0.5">
+            {ZONE_LABELS[zone]}
+          </span>
         </p>
       )}
       <div className="flex items-stretch gap-1.5">
         {(['left', 'right'] as Side[]).map((side, index) => (
           <div key={side} className="flex flex-1 items-center gap-1.5">
             {index === 1 && (
-              <span className="tabular w-4 shrink-0 text-center text-[0.65rem] font-medium text-muted">
-                {row}
-              </span>
+              <BenchCell
+                row={row}
+                leftOccupied={Boolean(occupantAt({ row, side: 'left' }))}
+                rightOccupied={Boolean(occupantAt({ row, side: 'right' }))}
+              />
             )}
             <Seat
               seat={{ row, side }}
