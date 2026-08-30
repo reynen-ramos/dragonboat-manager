@@ -9,7 +9,7 @@ import { RadioCards } from '@/components/ui/RadioCards';
 import { formatDate, todayIso } from '@/domain/dates';
 import type { ClubEvent } from '@/domain/types';
 import { useCategories, useEvents } from '@/queries/hooks';
-import { categoryName, pluralise } from '@/utils/format';
+import { categoryName, pluralise, TRAINING_KIND_LABEL } from '@/utils/format';
 
 type View = 'list' | 'calendar';
 
@@ -116,7 +116,11 @@ function EventCard({ event }: { event: ClubEvent }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{event.name}</p>
-            {event.type === 'practice' && <Badge>Practice</Badge>}
+            {event.type === 'practice' && (
+              <Badge>
+                {event.trainingKind ? TRAINING_KIND_LABEL[event.trainingKind] : 'Practice'}
+              </Badge>
+            )}
             {event.type === 'other' && <Badge tone="warn">Other</Badge>}
           </div>
           <p className="mt-0.5 text-sm text-muted">

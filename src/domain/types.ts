@@ -38,6 +38,9 @@ export type RaceStage = 'heat' | 'semi' | 'final';
 
 export type EventType = 'race' | 'practice' | 'other';
 
+/** What kind of session a practice is — on the water, in the gym, or extras. */
+export type TrainingKind = 'water' | 'land' | 'supplementary';
+
 /** A physical seat position in the boat. Rows run bow (1) to stern (N). */
 export interface SeatPosition {
   row: number;
@@ -74,6 +77,8 @@ export interface ClubEvent {
   endDate?: string;
   location?: string;
   type: EventType;
+  /** Only meaningful when `type` is 'practice'. */
+  trainingKind?: TrainingKind;
   notes?: string;
 }
 

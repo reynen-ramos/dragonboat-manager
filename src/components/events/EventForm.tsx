@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { todayIso } from '@/domain/dates';
-import type { ClubEvent, EventType } from '@/domain/types';
+import type { ClubEvent, EventType, TrainingKind } from '@/domain/types';
 import { useCreateEvent, useUpdateEvent } from '@/queries/hooks';
+import { TRAINING_KIND_LABEL } from '@/utils/format';
 
 type Draft = Omit<ClubEvent, 'id'>;
 
@@ -40,7 +41,13 @@ export function EventForm({
       return;
     }
     setError(undefined);
-    const cleaned = { ...draft, name: draft.name.trim() };
+    // A training kind only means something on a practice; switching the type
+    // away must not leave a stale kind on a race.
+    const cleaned = {
+      ...draft,
+      name: draft.name.trim(),
+      trainingKind: draft.type === 'practice' ? draft.trainingKind : undefined,
+    };
     if (event) await update.mutateAsync({ id: event.id, patch: cleaned });
     else await create.mutateAsync(cleaned);
     onOpenChange(false);
@@ -89,6 +96,27 @@ export function EventForm({
               </Select>
             )}
           </Field>
+
+          {draft.type === 'practice' && (
+            <Field label="Training kind">
+              {(id) => (
+                <Select
+                  id={id}
+                  value={draft.trainingKind ?? ''}
+                  onChange={(e) =>
+                    set('trainingKind', (e.target.value || undefined) as TrainingKind | undefined)
+                  }
+                >
+                  <option value="">Unspecified</option>
+                  {(Object.keys(TRAINING_KIND_LABEL) as TrainingKind[]).map((kind) => (
+                    <option key={kind} value={kind}>
+                      {TRAINING_KIND_LABEL[kind]}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Start date">

@@ -90,6 +90,16 @@ describe('the season spans time', () => {
     const kinds = new Set(snap.events.map((e) => e.type));
     expect(kinds).toEqual(new Set(['race', 'practice', 'other']));
   });
+
+  it('has races and trainings ahead, and every training kind somewhere', () => {
+    // The dashboard splits upcoming events into races and trainings — both
+    // sections need demo rows, and the three kinds all need a wearer.
+    const ahead = snap.events.filter((e) => (e.endDate ?? e.startDate) >= TODAY);
+    expect(ahead.some((e) => e.type === 'race')).toBe(true);
+    expect(ahead.some((e) => e.type === 'practice')).toBe(true);
+    const kinds = new Set(snap.events.map((e) => e.trainingKind).filter(Boolean));
+    expect(kinds).toEqual(new Set(['water', 'land', 'supplementary']));
+  });
 });
 
 describe('each feature has something to show', () => {

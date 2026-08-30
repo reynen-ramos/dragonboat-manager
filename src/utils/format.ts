@@ -1,4 +1,4 @@
-import type { Category, Gender, Member, SidePreference } from '@/domain/types';
+import type { Category, Gender, Member, SidePreference, TrainingKind } from '@/domain/types';
 import { AGE_DIVISION_BOUNDS } from '@/domain/rules.config';
 
 export const fullName = (m: Member): string => `${m.firstName} ${m.lastName}`.trim();
@@ -26,6 +26,12 @@ export const GENDER_LABEL: Record<Gender, string> = {
   male: 'Male',
   female: 'Female',
   other: 'Other',
+};
+
+export const TRAINING_KIND_LABEL: Record<TrainingKind, string> = {
+  water: 'Water training',
+  land: 'Land training',
+  supplementary: 'Supplementary training',
 };
 
 export const formatWeight = (kg?: number): string => (kg == null ? '—' : `${Math.round(kg)}kg`);
