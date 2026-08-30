@@ -2,6 +2,7 @@ import { Timer } from 'lucide-react';
 import { formatRaceTime } from '@/domain/dates';
 import { compareGroups, rankEntries, STAGE_LABELS } from '@/domain/results';
 import { useAllRaceEntries, useCrew, useCrews } from '@/queries/hooks';
+import { ordinal } from '@/utils/format';
 
 /**
  * One crew's results, ranked against the races it was actually in.
@@ -46,9 +47,4 @@ export function CrewResults({ crewId }: { crewId: string }) {
       </ul>
     </section>
   );
-}
-
-function ordinal(n: number): string {
-  const suffix = ['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) || n % 10 > 3 ? 0 : n % 10];
-  return `${n}${suffix}`;
 }

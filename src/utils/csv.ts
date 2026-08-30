@@ -263,6 +263,18 @@ const escapeCell = (value: unknown): string => {
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 
+/**
+ * A generic CSV writer for tabular exports (reports and the like).
+ *
+ * Goes through `escapeCell`, so every export carries the same RFC quoting and
+ * formula-injection guard as the roster export — never hand-roll `join(',')`.
+ */
+export function rowsToCsv(headers: string[], rows: unknown[][]): string {
+  const lines = [headers, ...rows].map((row) => row.map(escapeCell).join(','));
+  // Same BOM + CRLF treatment as membersToCsv, for the same Excel reasons.
+  return String.fromCharCode(0xfeff) + lines.join('\r\n') + '\r\n';
+}
+
 export function membersToCsv(members: Member[]): string {
   const header = CSV_COLUMNS.join(',');
   const rows = members.map((member) =>

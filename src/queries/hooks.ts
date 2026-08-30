@@ -114,6 +114,9 @@ export const useMemberAssignments = (memberId: string | undefined) =>
     enabled: Boolean(memberId),
   });
 
+export const useAllAvailability = () =>
+  useQuery({ queryKey: keys.availability.all, queryFn: () => adapter.availability.listAll() });
+
 export const useAvailability = (eventId: string | undefined) =>
   useQuery({
     queryKey: keys.availability.byEvent(eventId ?? ''),
