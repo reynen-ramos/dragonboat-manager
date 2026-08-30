@@ -10,8 +10,9 @@ import { seatLabel, SIDE_LABELS } from '@/domain/boat';
 import { ageOn, formatDate, todayIso } from '@/domain/dates';
 import type { MemberHistoryRow } from '@/domain/memberHistory';
 import type { CrewRole } from '@/domain/types';
+import { eventTypeLabel } from '@/domain/eventTypes';
 import { useMemberHistory } from '@/queries/derived';
-import { useDeleteMember, useMember, useUndoableDelete } from '@/queries/hooks';
+import { useDeleteMember, useMember, useSettings, useUndoableDelete } from '@/queries/hooks';
 import { ZONE_LABELS } from '@/domain/boat';
 import { categoryName, fullName, formatWeight, GENDER_LABEL, pluralise, SIDE_PREFERENCE_LABEL } from '@/utils/format';
 
@@ -213,13 +214,16 @@ const STATUS_LABEL = { in: 'In', maybe: 'Maybe', out: 'Out' } as const;
 
 function HistoryRow({ row }: { row: MemberHistoryRow }) {
   const { event, status, participations } = row;
+  const settings = useSettings();
   return (
     <div className="surface flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border px-4 py-3">
       <div className="min-w-0">
         <p className="truncate font-medium">{event.name}</p>
         <p className="truncate text-sm text-muted">
           {formatDate(event.startDate)}
-          {event.type !== 'race' ? ` · ${event.type}` : ''}
+          {event.type !== 'race'
+            ? ` · ${eventTypeLabel(event.type, settings.eventTypes).toLowerCase()}`
+            : ''}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">

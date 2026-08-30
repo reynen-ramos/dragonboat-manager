@@ -1,3 +1,4 @@
+import { BUILTIN_EVENT_TYPES, BUILTIN_TRAINING_KINDS } from './eventTypes';
 import type { AgeDivision, BoatSize, ClubSettings } from './types';
 
 /**
@@ -11,6 +12,8 @@ export const DEFAULT_CLUB_SETTINGS: ClubSettings = {
   minWomenMixed: { 10: 4, 20: 8 },
   sideBalanceTolerance: 0.03,
   bowSternBalanceTolerance: 0.05,
+  eventTypes: BUILTIN_EVENT_TYPES,
+  trainingKinds: BUILTIN_TRAINING_KINDS,
 };
 
 /** Inclusive age bounds per division. `undefined` means unbounded on that end. */

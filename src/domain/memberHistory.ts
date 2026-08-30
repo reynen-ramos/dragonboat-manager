@@ -1,4 +1,5 @@
 import { getBoatLayout } from './boat';
+import { eventBase } from './eventTypes';
 import type {
   Availability,
   AvailabilityStatus,
@@ -6,6 +7,7 @@ import type {
   ClubEvent,
   Crew,
   CrewRole,
+  EventTypeDef,
   SeatPosition,
   SeatZone,
   Side,
@@ -60,6 +62,8 @@ export interface MemberHistoryInput {
   /** Already scoped to the member. */
   assignments: StoredAssignment[];
   availability: Availability[];
+  /** The club's event types — the summary counts by behaviour, not by id. */
+  eventTypes: EventTypeDef[];
 }
 
 export interface MemberHistory {
@@ -151,8 +155,12 @@ export function buildMemberHistory(input: MemberHistoryInput): MemberHistory {
     upcoming,
     past,
     summary: {
-      racesCrewed: past.filter((row) => row.event.type === 'race' && crewed(row)).length,
-      practicesCrewed: past.filter((row) => row.event.type === 'practice' && crewed(row)).length,
+      racesCrewed: past.filter(
+        (row) => eventBase(row.event.type, input.eventTypes) === 'race' && crewed(row),
+      ).length,
+      practicesCrewed: past.filter(
+        (row) => eventBase(row.event.type, input.eventTypes) === 'practice' && crewed(row),
+      ).length,
       asked: answered.length,
       saidIn: answered.filter((row) => row.status === 'in').length,
       usualSpot: side !== undefined && zone !== undefined ? { side, zone } : undefined,

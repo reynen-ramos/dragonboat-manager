@@ -9,7 +9,9 @@ import { RadioCards } from '@/components/ui/RadioCards';
 import { formatDate, todayIso } from '@/domain/dates';
 import type { ClubEvent } from '@/domain/types';
 import { useCategories, useEvents } from '@/queries/hooks';
-import { categoryName, pluralise, TRAINING_KIND_LABEL } from '@/utils/format';
+import { eventBase, eventTypeLabel, trainingKindLabel } from '@/domain/eventTypes';
+import { useSettings } from '@/queries/hooks';
+import { categoryName, pluralise } from '@/utils/format';
 
 type View = 'list' | 'calendar';
 
@@ -72,7 +74,7 @@ export function EventsPage() {
           />
 
           {view === 'calendar' ? (
-            <EventsCalendar events={all} onPickDay={(iso) => setCreating({ startDate: iso })} />
+            <EventsCalendarWithTypes events={all} onPickDay={(iso) => setCreating({ startDate: iso })} />
           ) : (
             <div className="flex flex-col gap-8">
               {upcoming.length > 0 && <EventGroup title="Upcoming" events={upcoming} />}
@@ -93,6 +95,14 @@ export function EventsPage() {
   );
 }
 
+function EventsCalendarWithTypes(props: {
+  events: ClubEvent[];
+  onPickDay: (iso: string) => void;
+}) {
+  const settings = useSettings();
+  return <EventsCalendar {...props} eventTypes={settings.eventTypes} />;
+}
+
 function EventGroup({ title, events }: { title: string; events: ClubEvent[] }) {
   return (
     <section>
@@ -108,7 +118,9 @@ function EventGroup({ title, events }: { title: string; events: ClubEvent[] }) {
 
 function EventCard({ event }: { event: ClubEvent }) {
   const categories = useCategories(event.id);
+  const settings = useSettings();
   const list = categories.data ?? [];
+  const base = eventBase(event.type, settings.eventTypes);
 
   return (
     <Card className="transition-colors hover:surface-sunken">
@@ -116,12 +128,15 @@ function EventCard({ event }: { event: ClubEvent }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{event.name}</p>
-            {event.type === 'practice' && (
-              <Badge>
-                {event.trainingKind ? TRAINING_KIND_LABEL[event.trainingKind] : 'Practice'}
+            {/* The plain built-in race is the unmarked default; everything
+                else says what it is — a custom race-base type included. */}
+            {event.type !== 'race' && (
+              <Badge tone={base === 'other' ? 'warn' : base === 'race' ? 'brand' : 'neutral'}>
+                {base === 'practice' && event.trainingKind
+                  ? trainingKindLabel(event.trainingKind, settings.trainingKinds)
+                  : eventTypeLabel(event.type, settings.eventTypes)}
               </Badge>
             )}
-            {event.type === 'other' && <Badge tone="warn">Other</Badge>}
           </div>
           <p className="mt-0.5 text-sm text-muted">
             {formatDate(event.startDate)}

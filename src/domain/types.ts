@@ -36,10 +36,26 @@ export type AvailabilityStatus = 'in' | 'out' | 'maybe';
 
 export type RaceStage = 'heat' | 'semi' | 'final';
 
-export type EventType = 'race' | 'practice' | 'other';
+/**
+ * The behaviour an event type inherits: 'race' gets race day, results, and
+ * history counts; 'practice' gets training kinds; 'other' gets neither.
+ * The types themselves are club-maintained (`ClubSettings.eventTypes`) —
+ * every custom type declares which of these three it behaves like.
+ */
+export type EventBase = 'race' | 'practice' | 'other';
 
-/** What kind of session a practice is — on the water, in the gym, or extras. */
-export type TrainingKind = 'water' | 'land' | 'supplementary';
+/** A club-defined event type. Built-ins use ids 'race', 'practice', 'other'. */
+export interface EventTypeDef {
+  id: string;
+  label: string;
+  base: EventBase;
+}
+
+/** A club-defined kind of training session. A pure label — no behaviour. */
+export interface TrainingKindDef {
+  id: string;
+  label: string;
+}
 
 /** A physical seat position in the boat. Rows run bow (1) to stern (N). */
 export interface SeatPosition {
@@ -76,9 +92,11 @@ export interface ClubEvent {
   startDate: string;
   endDate?: string;
   location?: string;
-  type: EventType;
-  /** Only meaningful when `type` is 'practice'. */
-  trainingKind?: TrainingKind;
+  /** Id of a `ClubSettings.eventTypes` entry. */
+  type: string;
+  /** Id of a `ClubSettings.trainingKinds` entry — only meaningful when the
+   *  event's type behaves like a practice. */
+  trainingKind?: string;
   notes?: string;
 }
 
@@ -222,4 +240,8 @@ export interface ClubSettings {
   sideBalanceTolerance: number;
   /** Same, for bow-half vs stern-half weight. */
   bowSternBalanceTolerance: number;
+  /** The club's event types. Seeded with the three built-ins. */
+  eventTypes: EventTypeDef[];
+  /** The club's kinds of training session. Seeded with water/land/supplementary. */
+  trainingKinds: TrainingKindDef[];
 }

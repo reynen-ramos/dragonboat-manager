@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BUILTIN_EVENT_TYPES } from './eventTypes';
 import { buildMemberHistory, type MemberHistoryInput } from './memberHistory';
 import type {
   Availability,
@@ -60,6 +61,7 @@ const history = (over: Partial<MemberHistoryInput>) =>
     crews: [],
     assignments: [],
     availability: [],
+    eventTypes: BUILTIN_EVENT_TYPES,
     ...over,
   });
 
@@ -165,6 +167,26 @@ describe('summary', () => {
       categories: [category('c1', 'race1'), category('c2', 'prac1'), category('c3', 'race2')],
       crews: [crew('k1', 'c1'), crew('k2', 'c2'), crew('k3', 'c3')],
       assignments: [seat('k1', 1), seat('k2', 2), reserveRow],
+    });
+
+    expect(result.summary.racesCrewed).toBe(1);
+    expect(result.summary.practicesCrewed).toBe(1);
+  });
+
+  it('counts custom types by the behaviour they declare, not their id', () => {
+    const result = history({
+      events: [
+        event('tt', '2026-05-01', { type: 'time-trial' }),
+        event('gym', '2026-05-08', { type: 'gym-session' }),
+      ],
+      categories: [category('c1', 'tt'), category('c2', 'gym')],
+      crews: [crew('k1', 'c1'), crew('k2', 'c2')],
+      assignments: [seat('k1', 1), seat('k2', 2)],
+      eventTypes: [
+        ...BUILTIN_EVENT_TYPES,
+        { id: 'time-trial', label: 'Time trial', base: 'race' },
+        { id: 'gym-session', label: 'Gym session', base: 'practice' },
+      ],
     });
 
     expect(result.summary.racesCrewed).toBe(1);

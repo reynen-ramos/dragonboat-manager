@@ -25,9 +25,11 @@ import {
   useDuplicateCrew,
   useEvent,
   useMembers,
+  useSettings,
   useSwapCrewLineups,
   useUndoableDelete,
 } from '@/queries/hooks';
+import { eventBase } from '@/domain/eventTypes';
 import { useNotifications } from '@/stores/notifications';
 import { categoryName, pluralise } from '@/utils/format';
 
@@ -37,6 +39,7 @@ export function EventDetailPage() {
   const navigate = useNavigate();
   const event = useEvent(eventId);
   const categories = useCategories(eventId);
+  const settings = useSettings();
   const deleteEvent = useDeleteEvent();
   const [addingCategory, setAddingCategory] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -70,7 +73,7 @@ export function EventDetailPage() {
                 <ClipboardCheck /> Sign-ups
               </Link>
             </Button>
-            {event.data.type === 'race' && (
+            {eventBase(event.data.type, settings.eventTypes) === 'race' && (
               <Button asChild>
                 <Link to={`/events/${event.data.id}/racing`}>
                   <Trophy /> Race day
