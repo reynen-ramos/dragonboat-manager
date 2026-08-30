@@ -27,6 +27,13 @@ export const GENDER_LABEL: Record<Gender, string> = {
   female: 'Female',
   other: 'Other',
 };
+
+/** Single-letter gender marker, the counterpart of SIDE_MARK on roster rows. */
+export const GENDER_MARK: Record<Gender, string> = {
+  male: 'M',
+  female: 'F',
+  other: 'O',
+};
 export const formatWeight = (kg?: number): string => (kg == null ? '—' : `${Math.round(kg)}kg`);
 
 /**

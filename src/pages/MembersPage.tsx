@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { ageOn, todayIso } from '@/domain/dates';
-import type { Member, MemberStatus, SidePreference } from '@/domain/types';
+import type { Gender, Member, MemberStatus, SidePreference } from '@/domain/types';
 import { useMembers } from '@/queries/hooks';
 import { compareMembers, type MemberSortKey } from '@/utils/memberSort';
 import {
   fullName,
   formatWeight,
+  GENDER_LABEL,
+  GENDER_MARK,
   initials,
   pluralise,
   SIDE_MARK,
@@ -27,6 +29,7 @@ export function MembersPage() {
   const members = useMembers();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<MemberStatus | 'all'>('active');
+  const [gender, setGender] = useState<Gender | 'all'>('all');
   const [side, setSide] = useState<SidePreference | 'all'>('all');
   const [sort, setSort] = useState<MemberSortKey>('name');
   const [editing, setEditing] = useState<Member | 'new'>();
@@ -36,10 +39,11 @@ export function MembersPage() {
     const query = search.trim().toLowerCase();
     return (members.data ?? [])
       .filter((m) => (status === 'all' ? true : m.status === status))
+      .filter((m) => (gender === 'all' ? true : m.gender === gender))
       .filter((m) => (side === 'all' ? true : m.sidePreference === side))
       .filter((m) => (query ? fullName(m).toLowerCase().includes(query) : true))
       .sort(compareMembers(sort));
-  }, [members.data, search, status, side, sort]);
+  }, [members.data, search, status, gender, side, sort]);
 
   if (members.isLoading) return <Spinner />;
   if (members.isError) {
@@ -113,6 +117,17 @@ export function MembersPage() {
               <option value="inactive">Inactive</option>
               <option value="alumni">Alumni</option>
               <option value="all">All statuses</option>
+            </Select>
+            <Select
+              className="w-auto"
+              value={gender}
+              onChange={(e) => setGender(e.target.value as Gender | 'all')}
+              aria-label="Filter by gender"
+            >
+              <option value="all">Any gender</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
             </Select>
             <Select
               className="w-auto"
@@ -194,8 +209,13 @@ function MemberRow({ member }: { member: Member }) {
         <span className="tabular hidden w-16 text-right text-sm text-muted sm:block">
           {formatWeight(member.weightKg)}
         </span>
+        <Badge tone="neutral">
+          <span aria-hidden="true">{GENDER_MARK[member.gender]}</span>
+          <span className="sr-only">{GENDER_LABEL[member.gender]}</span>
+        </Badge>
         <Badge tone={member.sidePreference === 'both' ? 'neutral' : 'brand'}>
-          {SIDE_MARK[member.sidePreference]}
+          <span aria-hidden="true">{SIDE_MARK[member.sidePreference]}</span>
+          <span className="sr-only">{SIDE_PREFERENCE_LABEL[member.sidePreference]}</span>
         </Badge>
       </Link>
     </li>
