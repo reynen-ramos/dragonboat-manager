@@ -7,7 +7,7 @@ import type { AvailabilityStatus, Member } from '@/domain/types';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { cn } from '@/utils/cn';
 import { compareMembers, type MemberSortKey } from '@/utils/memberSort';
-import { fullName, pluralise } from '@/utils/format';
+import { fullName } from '@/utils/format';
 import { ROSTER_DROPPABLE_ID, rosterDraggableId, type DragData, type DropData } from './dragTypes';
 import { PaddlerChip } from './PaddlerChip';
 
@@ -15,9 +15,12 @@ import { PaddlerChip } from './PaddlerChip';
 /**
  * The pool of paddlers not yet in this crew.
  *
- * Defaults to hiding anyone who said they are unavailable — building a lineup
- * from people who have already declined is the most common wasted effort — with
- * a toggle for when a coach wants the whole club anyway.
+ * Opt-in: only members signed up for the event (In, or Maybe flagged as
+ * tentative) appear by default — a lineup is built from the people who are
+ * actually coming, not the whole club. The "Show everyone" toggle is the
+ * dock-side escape hatch for someone who turns up unannounced; it reveals
+ * the unsigned and the declined, each flagged, but never changes what Fill
+ * the boat may auto-seat.
  */
 export function RosterPanel({
   members,
@@ -36,25 +39,31 @@ export function RosterPanel({
 }) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<MemberSortKey>('name');
-  const [showUnavailable, setShowUnavailable] = useState(false);
+  const [showEveryone, setShowEveryone] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
     id: ROSTER_DROPPABLE_ID,
     data: { kind: 'roster' } satisfies DropData,
   });
 
+  const signedUp = (memberId: string) => {
+    const status = availability.get(memberId);
+    return status === 'in' || status === 'maybe';
+  };
+
   const available = useMemo(() => {
     const query = search.trim().toLowerCase();
     return members
       .filter((m) => !inCrewMemberIds.has(m.id))
       .filter((m) => m.status === 'active')
-      .filter((m) => (showUnavailable ? true : availability.get(m.id) !== 'out'))
+      .filter((m) => (showEveryone ? true : signedUp(m.id)))
       .filter((m) => (query ? fullName(m).toLowerCase().includes(query) : true))
       .sort(compareMembers(sort));
-  }, [members, inCrewMemberIds, availability, showUnavailable, search, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- signedUp derives from availability
+  }, [members, inCrewMemberIds, availability, showEveryone, search, sort]);
 
   const hiddenCount = members.filter(
-    (m) => !inCrewMemberIds.has(m.id) && m.status === 'active' && availability.get(m.id) === 'out',
+    (m) => !inCrewMemberIds.has(m.id) && m.status === 'active' && !signedUp(m.id),
   ).length;
 
   return (
@@ -67,7 +76,7 @@ export function RosterPanel({
     >
       <div className="flex flex-col gap-2 border-b border-subtle p-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Available paddlers</h2>
+          <h2 className="text-sm font-semibold">Signed-up paddlers</h2>
           <Badge>{available.length}</Badge>
         </div>
         <SearchInput
@@ -92,10 +101,10 @@ export function RosterPanel({
             <input
               type="checkbox"
               className="size-3.5 accent-[var(--color-brand-600)]"
-              checked={showUnavailable}
-              onChange={(e) => setShowUnavailable(e.target.checked)}
+              checked={showEveryone}
+              onChange={(e) => setShowEveryone(e.target.checked)}
             />
-            Show {pluralise(hiddenCount, 'unavailable paddler')}
+            Show everyone ({hiddenCount} not signed up or out)
           </label>
         )}
       </div>
@@ -103,7 +112,9 @@ export function RosterPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {available.length === 0 ? (
           <p className="px-2 py-6 text-center text-sm text-muted">
-            Everyone available is already in this crew.
+            {availability.size === 0
+              ? 'Nobody has signed up for this event yet — record sign-ups from the event page.'
+              : 'Everyone signed up is already in this crew.'}
           </p>
         ) : (
           <ul className="flex flex-col gap-1">
@@ -112,6 +123,8 @@ export function RosterPanel({
                 <RosterCard
                   member={member}
                   unavailable={availability.get(member.id) === 'out'}
+                  notSignedUp={availability.size > 0 && !availability.has(member.id)}
+                  tentative={availability.get(member.id) === 'maybe'}
                   doubleBooked={doubleBookedIds.has(member.id)}
                   selected={selectedMemberId === member.id}
                   onSelect={() =>
@@ -136,12 +149,16 @@ export function RosterPanel({
 function RosterCard({
   member,
   unavailable,
+  notSignedUp,
+  tentative,
   doubleBooked,
   selected,
   onSelect,
 }: {
   member: Member;
   unavailable: boolean;
+  notSignedUp: boolean;
+  tentative: boolean;
   doubleBooked: boolean;
   selected: boolean;
   onSelect: () => void;
@@ -173,7 +190,13 @@ function RosterCard({
         aria-pressed={selected}
         className="min-w-0 flex-1 text-left"
       >
-        <PaddlerChip member={member} unavailable={unavailable} doubleBooked={doubleBooked} />
+        <PaddlerChip
+          member={member}
+          unavailable={unavailable}
+          notSignedUp={notSignedUp}
+          tentative={tentative}
+          doubleBooked={doubleBooked}
+        />
       </button>
       <span
         ref={setNodeRef}

@@ -14,6 +14,8 @@ export function PaddlerChip({
   wrongSide,
   unavailable,
   doubleBooked,
+  notSignedUp,
+  tentative,
   pinned,
   compact,
   className,
@@ -22,10 +24,26 @@ export function PaddlerChip({
   wrongSide?: boolean;
   unavailable?: boolean;
   doubleBooked?: boolean;
+  /** In a lineup for an event this member never signed up for. */
+  notSignedUp?: boolean;
+  /** Signed up Maybe — in the pool, but not a firm commitment. */
+  tentative?: boolean;
   pinned?: boolean;
   compact?: boolean;
   className?: string;
 }) {
+  // One word at most, worst first — a chip reciting three problems reads as
+  // noise, and the Checks panel already lists everything.
+  const warning = doubleBooked
+    ? { text: 'in another crew', short: 'other crew', tone: 'text-red-600' }
+    : unavailable
+      ? { text: 'unavailable', short: 'unavailable', tone: 'text-amber-600' }
+      : notSignedUp
+        ? { text: 'not signed up', short: 'unsigned', tone: 'text-amber-600' }
+        : tentative
+          ? { text: 'maybe', short: 'maybe', tone: 'text-amber-600' }
+          : undefined;
+
   return (
     <div className={cn('flex min-w-0 items-center gap-1.5', className)}>
       <span
@@ -59,22 +77,18 @@ export function PaddlerChip({
         {!compact ? (
           <span className="tabular block text-[0.65rem] leading-tight text-muted">
             {formatWeight(member.weightKg)}
-            {unavailable && <span className="ml-1 text-amber-600">unavailable</span>}
-            {doubleBooked && <span className="ml-1 text-red-600">in another crew</span>}
+            {warning && <span className={cn('ml-1', warning.tone)}>{warning.text}</span>}
           </span>
         ) : (
           // Compact hides the weight line to fit the reserves strip, but the
           // warnings on it are the reason a reserve is worth looking at. An
           // icon rather than a colour, so it survives a colour-blind reader.
-          (unavailable || doubleBooked) && (
+          warning && (
             <span
-              className={cn(
-                'flex items-center gap-0.5 text-[0.6rem] leading-tight',
-                doubleBooked ? 'text-red-600' : 'text-amber-600',
-              )}
+              className={cn('flex items-center gap-0.5 text-[0.6rem] leading-tight', warning.tone)}
             >
               <AlertTriangle className="size-2.5 shrink-0" aria-hidden="true" />
-              {doubleBooked ? 'other crew' : 'unavailable'}
+              {warning.short}
             </span>
           )
         )}

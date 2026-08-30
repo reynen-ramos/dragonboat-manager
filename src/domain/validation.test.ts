@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CLUB_SETTINGS } from './rules.config';
 import { makeMember } from './testing';
-import type { Assignment, BoatSize, Category, GenderClass, Member } from './types';
+import type {
+  Assignment,
+  AvailabilityStatus,
+  BoatSize,
+  Category,
+  GenderClass,
+  Member,
+} from './types';
 import { validateCrew, type Issue, type ValidationInput } from './validation';
 
 const settings = DEFAULT_CLUB_SETTINGS;
@@ -279,19 +286,75 @@ describe('cross-crew and availability checks', () => {
     expect(issue?.memberId).toBe('p5');
   });
 
-  it('does not warn about available or undecided paddlers', () => {
+  it('does not warn about paddlers signed up In or Maybe', () => {
     const { assignments, members } = fullCrew(20);
     const issues = run({
       category: category(20, 'open'),
       assignments,
       members,
-      availability: new Map([
-        ['p1', 'in'],
-        ['p2', 'maybe'],
-      ]),
+      availability: new Map<string, AvailabilityStatus>(
+        assignments.map((a) => [a.memberId, a.memberId === 'p2' ? 'maybe' : 'in']),
+      ),
     });
 
     expect(codes(issues)).not.toContain('UNAVAILABLE');
+    expect(codes(issues)).not.toContain('NOT_SIGNED_UP');
+  });
+
+  it('warns when a seated paddler has not signed up', () => {
+    const { assignments, members } = fullCrew(20);
+    const issues = run({
+      category: category(20, 'open'),
+      assignments,
+      members,
+      availability: new Map<string, AvailabilityStatus>(
+        assignments.filter((a) => a.memberId !== 'p7').map((a) => [a.memberId, 'in']),
+      ),
+    });
+
+    const unsigned = issues.filter((i) => i.code === 'NOT_SIGNED_UP');
+    expect(unsigned).toHaveLength(1);
+    expect(unsigned[0]).toMatchObject({
+      level: 'warning',
+      memberId: 'p7',
+      seat: { row: 8, side: 'left' },
+    });
+  });
+
+  it('stays silent about sign-ups when nobody has signed up at all', () => {
+    // An event where sign-ups are simply not in use must not warn per seat.
+    const { assignments, members } = fullCrew(20);
+    const issues = run({
+      category: category(20, 'open'),
+      assignments,
+      members,
+      availability: new Map(),
+    });
+
+    expect(codes(issues)).not.toContain('NOT_SIGNED_UP');
+  });
+
+  it('stays silent about sign-ups when no availability is supplied', () => {
+    const { assignments, members } = fullCrew(20);
+    const issues = run({ category: category(20, 'open'), assignments, members });
+
+    expect(codes(issues)).not.toContain('NOT_SIGNED_UP');
+  });
+
+  it('does not ask reserves to sign up', () => {
+    const { assignments, members } = fullCrew(20);
+    members.set('r1', makeMember({ id: 'r1' }));
+    assignments.push({ id: 'a-r1', crewId: 'crew-1', memberId: 'r1', role: 'reserve' });
+    const issues = run({
+      category: category(20, 'open'),
+      assignments,
+      members,
+      availability: new Map<string, AvailabilityStatus>(
+        assignments.filter((a) => a.role !== 'reserve').map((a) => [a.memberId, 'in']),
+      ),
+    });
+
+    expect(codes(issues)).not.toContain('NOT_SIGNED_UP');
   });
 });
 

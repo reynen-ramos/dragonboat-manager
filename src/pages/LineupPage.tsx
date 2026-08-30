@@ -41,6 +41,7 @@ import {
 import {
   useApplySeatingChanges,
   useSettings,
+  useAvailability,
   useCategory,
   useCrew,
   useEvent,
@@ -103,6 +104,10 @@ export function LineupPage() {
   const balance = useCrewBalance(crewId, category.data);
   const issues = useCrewIssues(crewId, category.data, eventId, event.data?.startDate);
   const availability = useAvailabilityByMember(eventId);
+  // The derived map above can't say "still loading" — an empty map means
+  // either "no sign-ups yet" or "query in flight", and the roster's empty
+  // copy must only ever mean the former. Same query key, so this dedupes.
+  const availabilityQuery = useAvailability(eventId);
   const categoryAssignments = useCategoryCrewAssignments(category.data?.id);
   const settings = useSettings();
 
@@ -250,7 +255,13 @@ export function LineupPage() {
 
   // `event` belongs in both guards: it is read below, and leaving it out fell
   // through to "That crew no longer exists" while it was still loading.
-  if (crew.isLoading || category.isLoading || members.isLoading || event.isLoading) {
+  if (
+    crew.isLoading ||
+    category.isLoading ||
+    members.isLoading ||
+    event.isLoading ||
+    availabilityQuery.isLoading
+  ) {
     return <Spinner />;
   }
   if (crew.isError || category.isError || members.isError || event.isError || lineup.isError) {
@@ -275,6 +286,8 @@ export function LineupPage() {
     member,
     wrongSide: assignment.role === 'paddler' && violatesSidePreference({ assignment, member }),
     unavailable: availability.get(member.id) === 'out',
+    notSignedUp: availability.size > 0 && !availability.has(member.id),
+    tentative: availability.get(member.id) === 'maybe',
     doubleBooked: doubleBookedIds.has(member.id),
   });
 

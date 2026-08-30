@@ -9,13 +9,12 @@ import { fullName, pluralise } from '@/utils/format';
 
 const TIER_LABEL: Record<FillTier, string> = {
   reserve: 'From the reserves',
-  in: 'Marked In',
-  maybe: 'Marked Maybe',
-  unanswered: 'Not asked yet',
+  in: 'Signed up In',
+  maybe: 'Signed up Maybe',
 };
 
 /** The order tiers are shown — the same order they are picked. */
-const TIERS: FillTier[] = ['reserve', 'in', 'maybe', 'unanswered'];
+const TIERS: FillTier[] = ['reserve', 'in', 'maybe'];
 
 /**
  * "Fill the boat" — propose, preview, then apply as one undoable step.
@@ -59,7 +58,7 @@ export function FillBoatDialog({
       </DialogTrigger>
       <DialogContent
         title="Fill the boat"
-        description="Seats the crew's reserves first, then paddlers marked In, then Maybe — never anyone marked Out or seated in another crew of this category."
+        description="Seats the crew's reserves first, then paddlers signed up In, then Maybe — never anyone marked Out, anyone who hasn't signed up, or anyone seated in another crew of this category."
         footer={
           <>
             <DialogClose asChild>
@@ -83,8 +82,8 @@ export function FillBoatDialog({
           <div className="flex flex-col gap-3 text-sm">
             {proposal.report.seated.length === 0 ? (
               <p className="text-muted">
-                Nobody eligible is left — everyone available is already seated here or racing in
-                another crew of this category.
+                Nobody signed up is left — everyone who signed up is already seated here or racing
+                in another crew of this category.
               </p>
             ) : (
               TIERS.map((tier) => {

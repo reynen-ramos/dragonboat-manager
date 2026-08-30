@@ -13,12 +13,13 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { fullName, initials, pluralise, SIDE_MARK } from '@/utils/format';
 
 /**
- * Who is available for an event.
+ * The event's sign-up sheet: who is In, Maybe, or Out.
  *
- * In v1 the coach records this on everyone's behalf — there are no paddler
- * logins yet — so the whole roster is one tap-per-person list rather than a
- * form each member fills in. The stored shape already matches what a
- * paddler-facing RSVP would write.
+ * Signing up is what puts a member in the lineup builder's paddler pool —
+ * the pool is opt-in, not the whole club. In v1 the coach records sign-ups
+ * on everyone's behalf — there are no paddler logins yet — so the whole
+ * roster is one tap-per-person list rather than a form each member fills in.
+ * The stored shape already matches what a paddler-facing sign-up would write.
  */
 
 const STATUSES: { value: AvailabilityStatus; label: string; tone: string }[] = [
@@ -27,7 +28,7 @@ const STATUSES: { value: AvailabilityStatus; label: string; tone: string }[] = [
   { value: 'out', label: 'Out', tone: 'bg-red-600 text-white' },
 ];
 
-export function AvailabilityPage() {
+export function SignupsPage() {
   const { eventId } = useParams();
   const event = useEvent(eventId);
   const members = useMembers();
@@ -87,7 +88,7 @@ export function AvailabilityPage() {
       <BackLink to={`/events/${event.data.id}`}>{event.data.name}</BackLink>
 
       <PageHeader
-        title="Availability"
+        title="Sign-ups"
         description={`${event.data.name} · ${formatDate(event.data.startDate)}`}
       />
 
@@ -108,13 +109,13 @@ export function AvailabilityPage() {
             <Badge tone="good">{counts.in} in</Badge>
             <Badge tone="warn">{counts.maybe} maybe</Badge>
             <Badge tone="bad">{counts.out} out</Badge>
-            {unanswered > 0 && <Badge>{unanswered} not asked</Badge>}
+            {unanswered > 0 && <Badge>{unanswered} not signed up</Badge>}
           </div>
 
           {unanswered > 0 && (
             <Card className="mb-4 flex flex-wrap items-center gap-2 p-3">
               <span className="text-sm text-muted">
-                Mark the {pluralise(unanswered, 'paddler')} nobody has asked yet as
+                Mark the {pluralise(unanswered, 'paddler')} who haven't signed up yet as
               </span>
               {STATUSES.map(({ value, label }) => (
                 <Button key={value} size="sm" onClick={() => setAllUnanswered(value)}>
@@ -232,7 +233,7 @@ function AvailabilityRow({
       </Badge>
 
       <RadioCards
-        label={`Availability for ${fullName(member)}`}
+        label={`Sign-up for ${fullName(member)}`}
         className="flex shrink-0 gap-1"
         optionClassName="h-9 min-w-14 rounded-lg border border-subtle px-2 text-xs font-medium transition-colors hover:surface-sunken"
         value={status}

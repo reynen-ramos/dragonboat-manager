@@ -48,7 +48,12 @@ const fill = (over: Partial<FillInput>) =>
     crewId: 'crew-1',
     assignments: [],
     members: [],
-    availability: new Map(),
+    // The pool is opt-in: an outsider must be signed up to be seatable. Tests
+    // that are not about sign-ups get their whole roster marked In by default,
+    // so an empty map here can never make an exclusion test pass vacuously.
+    availability: new Map<string, AvailabilityStatus>(
+      (over.members ?? []).map((m) => [m.id, 'in']),
+    ),
     categoryAssignments: [],
     settings: DEFAULT_CLUB_SETTINGS,
     ...over,
@@ -72,7 +77,7 @@ describe('who gets seated', () => {
     expect(report.seated.slice(0, 2).every((p) => p.tier === 'reserve')).toBe(true);
   });
 
-  it('prefers In over Maybe over unanswered, and never seats Out', () => {
+  it('prefers In over Maybe, and never seats Out or the unsigned', () => {
     const members = roster(4);
     const { report } = fill({
       category: category({ boatSize: 10 }),
@@ -81,13 +86,44 @@ describe('who gets seated', () => {
         ['m0', 'out'],
         ['m1', 'maybe'],
         ['m2', 'in'],
+        // m3 never signed up.
       ]),
     });
 
     const order = report.seated.map((p) => p.memberId);
     expect(order.indexOf('m2')).toBeLessThan(order.indexOf('m1'));
-    expect(order.indexOf('m1')).toBeLessThan(order.indexOf('m3'));
+    expect(report.seated.find((p) => p.memberId === 'm2')?.tier).toBe('in');
+    expect(report.seated.find((p) => p.memberId === 'm1')?.tier).toBe('maybe');
     expect(order).not.toContain('m0');
+    expect(order).not.toContain('m3');
+  });
+
+  it('seats an unanswered reserve — being named a reserve outranks silence', () => {
+    const members = roster(3);
+    const { report } = fill({
+      members,
+      assignments: [reserve('m0')],
+      availability: avail([['m1', 'in']]),
+    });
+
+    const m0 = report.seated.find((p) => p.memberId === 'm0');
+    expect(m0?.tier).toBe('reserve');
+    // …but the same silence keeps the outsider m2 on the shore.
+    expect(report.seated.map((p) => p.memberId)).not.toContain('m2');
+  });
+
+  it('excludes a reserve who is marked Out', () => {
+    const members = roster(3);
+    const { report } = fill({
+      members,
+      assignments: [reserve('m0')],
+      availability: avail([
+        ['m0', 'out'],
+        ['m1', 'in'],
+      ]),
+    });
+
+    expect(report.seated.map((p) => p.memberId)).not.toContain('m0');
   });
 
   it('skips members seated in another crew of the category, but not its reserves', () => {
@@ -145,8 +181,8 @@ describe('crew rules', () => {
   });
 
   it('stops picking a fixed side once its rows are spoken for', () => {
-    // Five rows a side. Six left-only paddlers marked In, five both-siders
-    // unanswered: a naive tier order would take all six lefts.
+    // Five rows a side. Six left-only paddlers signed up In, five both-siders
+    // only Maybe: a naive tier order would take all six lefts.
     const members = [
       ...roster(6, () => ({ sidePreference: 'left' })),
       ...roster(5, (i) => ({ id: `b${i}`, lastName: `B${i}`, sidePreference: 'both' })).map(
@@ -155,7 +191,9 @@ describe('crew rules', () => {
     ];
     const { report } = fill({
       members,
-      availability: avail(members.filter((m) => m.id.startsWith('m')).map((m) => [m.id, 'in'])),
+      availability: avail(
+        members.map((m) => [m.id, m.id.startsWith('m') ? 'in' : 'maybe']),
+      ),
     });
 
     const lefts = report.seated.filter((p) => p.memberId.startsWith('m'));
@@ -236,5 +274,19 @@ describe('drummer and cox', () => {
     expect(report.stillEmpty).toBe(0);
     expect(report.drummerAddedId).toBeUndefined();
     expect(report.drummerStillMissing).toBe(true);
+  });
+
+  it('fills the drum and steering only from the signed-up bench', () => {
+    // The only qualified drummer and cox never signed up.
+    const members = roster(12, (i) => ({ canDrum: i === 10, canSteer: i === 11 }));
+    const { report } = fill({
+      members,
+      availability: avail(members.slice(0, 10).map((m) => [m.id, 'in'])),
+    });
+
+    expect(report.drummerAddedId).toBeUndefined();
+    expect(report.coxAddedId).toBeUndefined();
+    expect(report.drummerStillMissing).toBe(true);
+    expect(report.coxStillMissing).toBe(true);
   });
 });

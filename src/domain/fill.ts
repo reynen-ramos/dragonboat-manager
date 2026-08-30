@@ -20,16 +20,20 @@ import type {
  * caller applies the returned changes, and applying them through the normal
  * seating pipeline makes the whole fill one undo step.
  *
- * Eligibility, in priority order:
+ * The pool is opt-in: sign-ups (the availability answers) decide who may be
+ * seated. Eligibility, in priority order:
  *
- *   1. The crew's own reserves — they are already with the crew.
- *   2. Members marked In for the event.
- *   3. Members marked Maybe.
- *   4. Members who have not answered.
+ *   1. The crew's own reserves — being attached to the crew is an explicit
+ *      coach action, stronger than any answer, so an unanswered reserve still
+ *      counts. A reserve marked Out never does.
+ *   2. Members signed up In for the event.
+ *   3. Members signed up Maybe.
  *
- * Never anyone marked Out, never anyone seated in another crew of the same
- * category (a *reserve* elsewhere is fine — being a spare for the other boat
- * is normal), and never someone already in this crew in another role.
+ * Nobody else. Never anyone marked Out, never anyone who has not signed up,
+ * never anyone seated in another crew of the same category (a *reserve*
+ * elsewhere is fine — being a spare for the other boat is normal), and never
+ * someone already in this crew in another role. The drummer and cox come from
+ * the leftover signed-up bench under the same rule.
  *
  * Within a tier, members with a recorded weight come first — the balance
  * planner treats a missing weight as 0kg, so an unweighed paddler placed by
@@ -37,7 +41,7 @@ import type {
  * the proposal is deterministic.
  */
 
-export type FillTier = 'reserve' | 'in' | 'maybe' | 'unanswered';
+export type FillTier = 'reserve' | 'in' | 'maybe';
 
 export interface FillPick {
   memberId: string;
@@ -101,18 +105,26 @@ export function planCrewFill(input: FillInput): { changes: SeatingChange[]; repo
       .map((a) => a.memberId),
   );
 
-  const tierOf = (memberId: string): FillTier => {
-    const status = availability.get(memberId);
-    return status === 'in' ? 'in' : status === 'maybe' ? 'maybe' : 'unanswered';
-  };
+  /** Only called for eligible outsiders, who are always in or maybe. */
+  const tierOf = (memberId: string): FillTier =>
+    availability.get(memberId) === 'in' ? 'in' : 'maybe';
 
-  const eligible = (m: Member): boolean =>
+  const baseEligible = (m: Member): boolean =>
     m.status === 'active' &&
-    availability.get(m.id) !== 'out' &&
     !seatedElsewhere.has(m.id) &&
     (category.genderClass !== 'women' || m.gender === 'female');
 
-  const TIER_RANK: Record<FillTier, number> = { reserve: 0, in: 1, maybe: 2, unanswered: 3 };
+  // A reserve is already with the crew, so only an explicit Out excludes
+  // them; an outsider must have actually signed up (In or Maybe).
+  const eligibleAsReserve = (m: Member): boolean =>
+    baseEligible(m) && availability.get(m.id) !== 'out';
+
+  const eligibleAsOutsider = (m: Member): boolean => {
+    const status = availability.get(m.id);
+    return baseEligible(m) && (status === 'in' || status === 'maybe');
+  };
+
+  const TIER_RANK: Record<FillTier, number> = { reserve: 0, in: 1, maybe: 2 };
   const byPriority = (a: { member: Member; tier: FillTier }, b: typeof a) =>
     TIER_RANK[a.tier] - TIER_RANK[b.tier] ||
     Number(b.member.weightKg != null) - Number(a.member.weightKg != null) ||
@@ -123,11 +135,11 @@ export function planCrewFill(input: FillInput): { changes: SeatingChange[]; repo
     .filter((a) => a.role === 'reserve')
     .map((a) => ({ member: membersById.get(a.memberId), assignmentId: a.id }))
     .filter((r): r is { member: Member; assignmentId: string } => r.member != null)
-    .filter((r) => eligible(r.member))
+    .filter((r) => eligibleAsReserve(r.member))
     .map((r) => ({ ...r, tier: 'reserve' as const }));
 
   const outsiders = members
-    .filter((m) => !inThisCrew.has(m.id) && eligible(m))
+    .filter((m) => !inThisCrew.has(m.id) && eligibleAsOutsider(m))
     .map((member) => ({ member, tier: tierOf(member.id), assignmentId: undefined }));
 
   const pool = [...ownReserves, ...outsiders].sort(byPriority);

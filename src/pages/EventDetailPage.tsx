@@ -66,8 +66,8 @@ export function EventDetailPage() {
         actions={
           <>
             <Button asChild>
-              <Link to={`/events/${event.data.id}/availability`}>
-                <ClipboardCheck /> Availability
+              <Link to={`/events/${event.data.id}/signups`}>
+                <ClipboardCheck /> Sign-ups
               </Link>
             </Button>
             {event.data.type === 'race' && (
@@ -170,13 +170,13 @@ function AvailabilitySummary({ eventId }: { eventId: string }) {
 
   return (
     <Link
-      to={`/events/${eventId}/availability`}
+      to={`/events/${eventId}/signups`}
       className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-subtle px-4 py-3 hover:surface-sunken"
     >
       <ClipboardCheck className="size-4 text-muted" />
       {answered === 0 ? (
         <span className="text-sm text-muted">
-          Nobody has been asked about this event yet — set availability
+          Nobody has signed up for this event yet — open the sign-up sheet
         </span>
       ) : (
         <>
@@ -184,7 +184,7 @@ function AvailabilitySummary({ eventId }: { eventId: string }) {
           <Badge tone="warn">{count('maybe')} maybe</Badge>
           <Badge tone="bad">{count('out')} out</Badge>
           {active.length - answered > 0 && (
-            <Badge>{active.length - answered} not asked</Badge>
+            <Badge>{active.length - answered} not signed up</Badge>
           )}
         </>
       )}

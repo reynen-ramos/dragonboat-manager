@@ -269,8 +269,9 @@ function buildAvailability(today: string): Availability[] {
       in: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 29, 31],
       out: [[33, 'Minding the tent']],
     }),
-    // The championship: answered only partway down the roster, so the fill
-    // dialog has all four of its tiers — reserves, In, Maybe, and the unasked.
+    // The championship: signed up only partway down the roster, so it
+    // exercises all three fill tiers (reserves, In, Maybe), the opt-in
+    // paddler pool, and the Show-everyone override over the unsigned.
     ...answers(UPCOMING, at(5), {
       in: [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 19, 21, 22, 23, 24, 25, 27],
       maybe: [5, 17, 26],

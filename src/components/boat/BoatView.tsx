@@ -35,6 +35,8 @@ export interface SeatOccupant {
   member: Member;
   wrongSide: boolean;
   unavailable: boolean;
+  notSignedUp?: boolean;
+  tentative?: boolean;
   doubleBooked: boolean;
 }
 
@@ -304,6 +306,8 @@ function SeatOccupantView({
           member={occupant.member}
           wrongSide={occupant.wrongSide}
           unavailable={occupant.unavailable}
+          notSignedUp={occupant.notSignedUp}
+          tentative={occupant.tentative}
           doubleBooked={occupant.doubleBooked}
           pinned={occupant.assignment.pinned}
         />
@@ -414,6 +418,8 @@ function RoleOccupantView({
       <PaddlerChip
         member={occupant.member}
         unavailable={occupant.unavailable}
+        notSignedUp={occupant.notSignedUp}
+        tentative={occupant.tentative}
         doubleBooked={occupant.doubleBooked}
       />
     </button>
