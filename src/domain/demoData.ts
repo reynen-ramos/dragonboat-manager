@@ -94,6 +94,8 @@ const shiftDate = (iso: string, days: number): string => {
 const PAST_REGATTA = 'demo-event-past';
 const PRACTICE_1 = 'demo-event-practice-1';
 const PRACTICE_2 = 'demo-event-practice-2';
+const PRACTICE_3 = 'demo-event-practice-3';
+const PRACTICE_4 = 'demo-event-practice-4';
 const TODAY_RACE = 'demo-event-today';
 const UPCOMING = 'demo-event-upcoming';
 const FUTURE = 'demo-event-future';
@@ -334,6 +336,7 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
       startDate: shiftDate(today, -14),
       location: 'Club dock',
       type: 'practice',
+      trainingKind: 'water',
     },
     {
       id: PRACTICE_2,
@@ -341,6 +344,25 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
       startDate: shiftDate(today, -7),
       location: 'Boathouse',
       type: 'practice',
+      trainingKind: 'land',
+    },
+    // Two trainings ahead, so the dashboard's races/trainings split and all
+    // three training kinds have something to show.
+    {
+      id: PRACTICE_3,
+      name: 'Evening Water Session',
+      startDate: shiftDate(today, 4),
+      location: 'Club dock',
+      type: 'practice',
+      trainingKind: 'water',
+    },
+    {
+      id: PRACTICE_4,
+      name: 'Core & Mobility Circuit',
+      startDate: shiftDate(today, 6),
+      location: 'Boathouse gym',
+      type: 'practice',
+      trainingKind: 'supplementary',
     },
     {
       id: TODAY_RACE,

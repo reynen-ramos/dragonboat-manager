@@ -1,12 +1,13 @@
 import { CalendarDays, HardDriveDownload, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
+import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate, todayIso } from '@/domain/dates';
+import type { ClubEvent } from '@/domain/types';
 import { exportSnapshot, useEvents, useLoadDemoClub, useMembers } from '@/queries/hooks';
 import { backupDue, useBackupReminder } from '@/stores/backupReminder';
 import { downloadTextFile } from '@/utils/download';
-import { categoryName, pluralise } from '@/utils/format';
+import { categoryName, pluralise, TRAINING_KIND_LABEL } from '@/utils/format';
 import { useCategories } from '@/queries/hooks';
 
 export function DashboardPage() {
@@ -107,37 +108,60 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {upcoming.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-            Upcoming events
-          </h2>
-          <div className="flex flex-col gap-2">
-            {upcoming.map((event) => (
-              <EventRow key={event.id} eventId={event.id} name={event.name} date={event.startDate} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Races and trainings answer different questions — "what are we
+          entering?" versus "when do we meet this week?" — so each gets its
+          own list instead of one interleaved feed. */}
+      <UpcomingGroup title="Upcoming races" events={upcoming.filter((e) => e.type === 'race')} />
+      <UpcomingGroup
+        title="Upcoming trainings"
+        events={upcoming.filter((e) => e.type === 'practice')}
+      />
+      <UpcomingGroup
+        title="Other upcoming events"
+        events={upcoming.filter((e) => e.type === 'other')}
+      />
     </>
   );
 }
 
-function EventRow({ eventId, name, date }: { eventId: string; name: string; date: string }) {
-  const categories = useCategories(eventId);
+function UpcomingGroup({ title, events }: { title: string; events: ClubEvent[] }) {
+  if (events.length === 0) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
+      <div className="flex flex-col gap-2">
+        {events.map((event) => (
+          <EventRow key={event.id} event={event} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EventRow({ event }: { event: ClubEvent }) {
+  const categories = useCategories(event.id);
 
   return (
     <Link
-      to={`/events/${eventId}`}
+      to={`/events/${event.id}`}
       className="surface flex items-center justify-between gap-3 rounded-xl border px-4 py-3 hover:surface-sunken"
     >
       <div className="min-w-0">
-        <p className="truncate font-medium">{name}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate font-medium">{event.name}</p>
+          {event.trainingKind && <Badge>{TRAINING_KIND_LABEL[event.trainingKind]}</Badge>}
+        </div>
         <p className="truncate text-sm text-muted">
-          {formatDate(date)}
+          {formatDate(event.startDate)}
           {categories.data?.length
             ? ` · ${categories.data.map(categoryName).join(', ')}`
-            : ' · No categories yet'}
+            : // "No categories yet" is a nudge to plan a race; on a training
+              // or social it is just noise, so those show where to turn up.
+              event.type === 'race'
+              ? ' · No categories yet'
+              : event.location
+                ? ` · ${event.location}`
+                : ''}
         </p>
       </div>
       <span className="text-muted" aria-hidden>
