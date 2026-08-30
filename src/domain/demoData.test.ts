@@ -140,7 +140,7 @@ describe('each feature has something to show', () => {
     expect(kinds).toContain('only-b');
   });
 
-  it('the fill dialog gets all four tiers for the championship', () => {
+  it('the championship exercises every sign-up state', () => {
     const upcoming = snap.events.find((e) => e.name === 'Summer Regatta')!;
     const byMember = new Map(
       snap.availability.filter((a) => a.eventId === upcoming.id).map((a) => [a.memberId, a.status]),

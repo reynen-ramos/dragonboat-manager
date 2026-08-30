@@ -228,17 +228,29 @@ export function validateCrew(input: ValidationInput): Issue[] {
     }
   }
 
-  // --- Availability ---------------------------------------------------------
+  // --- Sign-ups (availability) ----------------------------------------------
   if (input.availability) {
     for (const a of assignments) {
       if (a.role === 'reserve') continue;
       const status = input.availability.get(a.memberId);
+      const member = members.get(a.memberId);
       if (status === 'out') {
-        const member = members.get(a.memberId);
         issues.push({
           level: 'warning',
           code: 'UNAVAILABLE',
           message: `${member ? fullName(member) : 'A paddler'} is marked unavailable for this event.`,
+          memberId: a.memberId,
+          seat: a.seat,
+        });
+      } else if (status === undefined && input.availability.size > 0) {
+        // The size gate matters twice over: an event where sign-ups are not
+        // in use at all (a supported state) must not spray one warning per
+        // seat, and the Checks panel passes an empty map while the sign-up
+        // query is still loading.
+        issues.push({
+          level: 'warning',
+          code: 'NOT_SIGNED_UP',
+          message: `${member ? fullName(member) : 'A paddler'} hasn't signed up for this event.`,
           memberId: a.memberId,
           seat: a.seat,
         });

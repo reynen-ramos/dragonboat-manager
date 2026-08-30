@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, redirect } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { RouteError } from './RouteError';
 
@@ -25,7 +25,7 @@ const MembersPage = page(() => import('@/pages/MembersPage'), (m) => m.MembersPa
 const MemberDetailPage = page(() => import('@/pages/MemberDetailPage'), (m) => m.MemberDetailPage);
 const EventsPage = page(() => import('@/pages/EventsPage'), (m) => m.EventsPage);
 const EventDetailPage = page(() => import('@/pages/EventDetailPage'), (m) => m.EventDetailPage);
-const AvailabilityPage = page(() => import('@/pages/AvailabilityPage'), (m) => m.AvailabilityPage);
+const SignupsPage = page(() => import('@/pages/SignupsPage'), (m) => m.SignupsPage);
 const RaceDayPage = page(() => import('@/pages/RaceDayPage'), (m) => m.RaceDayPage);
 const LineupPage = page(() => import('@/pages/LineupPage'), (m) => m.LineupPage);
 const SettingsPage = page(() => import('@/pages/SettingsPage'), (m) => m.SettingsPage);
@@ -44,7 +44,12 @@ export const router = createBrowserRouter([
       { path: 'members/:memberId', element: <MemberDetailPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
-      { path: 'events/:eventId/availability', element: <AvailabilityPage /> },
+      { path: 'events/:eventId/signups', element: <SignupsPage /> },
+      {
+        // The sign-up sheet lived at /availability before it was reframed.
+        path: 'events/:eventId/availability',
+        loader: ({ params }) => redirect(`/events/${params.eventId}/signups`),
+      },
       { path: 'events/:eventId/racing', element: <RaceDayPage /> },
       { path: 'events/:eventId/crews/:crewId', element: <LineupPage /> },
       { path: 'settings', element: <SettingsPage /> },
