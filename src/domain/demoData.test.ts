@@ -91,6 +91,43 @@ describe('the season spans time', () => {
     expect(kinds).toEqual(new Set(['race', 'practice', 'other']));
   });
 
+  it('the roster is wide enough to explore every member-facing feature', () => {
+    expect(snap.members.length).toBeGreaterThanOrEqual(50);
+
+    // Every status, every gender, every zone has a wearer.
+    expect(new Set(snap.members.map((m) => m.status))).toEqual(
+      new Set(['active', 'inactive', 'alumni']),
+    );
+    expect(new Set(snap.members.map((m) => m.gender))).toEqual(
+      new Set(['male', 'female', 'other']),
+    );
+    expect(new Set(snap.members.flatMap((m) => m.preferredZones ?? []))).toEqual(
+      new Set(['stroke', 'engine', 'rockets']),
+    );
+
+    // Incomplete records are a supported state, so the demo carries them.
+    expect(snap.members.some((m) => m.weightKg === undefined)).toBe(true);
+    expect(snap.members.some((m) => m.dateOfBirth === undefined)).toBe(true);
+    expect(snap.members.some((m) => m.notes)).toBe(true);
+    expect(snap.members.some((m) => m.email)).toBe(true);
+
+    // Enough crew officials that filling a second boat stays possible.
+    expect(snap.members.filter((m) => m.canDrum).length).toBeGreaterThanOrEqual(3);
+    expect(snap.members.filter((m) => m.canSteer).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('spans the age divisions, junior through Senior C', () => {
+    const years = snap.members
+      .map((m) => m.dateOfBirth && Number(m.dateOfBirth.slice(0, 4)))
+      .filter((y): y is number => typeof y === 'number');
+    // TODAY is 2026: born 1966 or earlier is 60+ (Senior C), 2008 or later is
+    // 18 or under (Junior).
+    expect(Math.min(...years)).toBeLessThanOrEqual(1966);
+    expect(Math.max(...years)).toBeGreaterThanOrEqual(2008);
+    // And a category exists that puts the age checks to work.
+    expect(snap.categories.some((c) => c.ageDivision)).toBe(true);
+  });
+
   it('has races and trainings ahead, and every training kind somewhere', () => {
     // The dashboard splits upcoming events into races and trainings — both
     // sections need demo rows, and the three kinds all need a wearer.
