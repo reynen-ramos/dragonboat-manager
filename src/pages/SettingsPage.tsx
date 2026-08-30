@@ -1,7 +1,7 @@
 import { Download, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { NumberField } from '@/components/ui/NumberField';
 import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate } from '@/domain/dates';
@@ -165,32 +165,21 @@ export function SettingsPage() {
         </Card>
       </div>
 
-      <Dialog open={confirmingClear} onOpenChange={setConfirmingClear}>
-        <DialogContent
-          title="Clear all data?"
-          description="Every member, event, and lineup will be deleted from this browser."
-          footer={
-            <>
-              <DialogClose asChild>
-                <Button>Cancel</Button>
-              </DialogClose>
-              <Button
-                variant="danger"
-                onClick={async () => {
-                  await clearAll.mutateAsync(undefined);
-                  setConfirmingClear(false);
-                }}
-              >
-                Delete everything
-              </Button>
-            </>
-          }
-        >
-          <p className="text-sm text-muted">
-            Export a backup first if there is any chance you will want this back.
-          </p>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmingClear}
+        onOpenChange={setConfirmingClear}
+        title="Clear all data?"
+        description="Every member, event, and lineup will be deleted from this browser."
+        confirmLabel="Delete everything"
+        pending={clearAll.isPending}
+        onConfirm={async () => {
+          await clearAll.mutateAsync(undefined);
+        }}
+      >
+        <p className="text-sm text-muted">
+          Export a backup first if there is any chance you will want this back.
+        </p>
+      </ConfirmDialog>
     </>
   );
 }

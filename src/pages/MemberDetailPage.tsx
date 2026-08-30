@@ -1,9 +1,10 @@
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MemberForm } from '@/components/members/MemberForm';
+import { BackLink } from '@/components/ui/BackLink';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
-import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { seatLabel, SIDE_LABELS } from '@/domain/boat';
 import { ageOn, formatDate, todayIso } from '@/domain/dates';
@@ -43,11 +44,7 @@ export function MemberDetailPage() {
 
   return (
     <>
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-        <Link to="/members">
-          <ArrowLeft /> All members
-        </Link>
-      </Button>
+      <BackLink to="/members">All members</BackLink>
 
       <PageHeader
         title={fullName(m)}
@@ -179,36 +176,25 @@ export function MemberDetailPage() {
         <MemberForm member={m} open onOpenChange={(open) => !open && setEditing(false)} />
       )}
 
-      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
-        <DialogContent
-          title={`Delete ${fullName(m)}?`}
-          description="They will also be removed from every crew they are in. This cannot be undone."
-          footer={
-            <>
-              <DialogClose asChild>
-                <Button>Cancel</Button>
-              </DialogClose>
-              <Button
-                variant="danger"
-                disabled={deleteMember.isPending}
-                onClick={async () => {
-                  const name = fullName(m);
-                  const bundle = await deleteMember.mutateAsync(m.id);
-                  undoableDelete(`Deleted ${name}.`, bundle);
-                  navigate('/members');
-                }}
-              >
-                Delete member
-              </Button>
-            </>
-          }
-        >
-          <p className="text-sm text-muted">
-            Consider setting their status to <strong>Inactive</strong> or <strong>Alumni</strong>{' '}
-            instead — that keeps their race history intact.
-          </p>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Delete ${fullName(m)}?`}
+        description="They will also be removed from every crew they are in. This cannot be undone."
+        confirmLabel="Delete member"
+        pending={deleteMember.isPending}
+        onConfirm={async () => {
+          const name = fullName(m);
+          const bundle = await deleteMember.mutateAsync(m.id);
+          undoableDelete(`Deleted ${name}.`, bundle);
+          navigate('/members');
+        }}
+      >
+        <p className="text-sm text-muted">
+          Consider setting their status to <strong>Inactive</strong> or <strong>Alumni</strong>{' '}
+          instead — that keeps their race history intact.
+        </p>
+      </ConfirmDialog>
     </>
   );
 }

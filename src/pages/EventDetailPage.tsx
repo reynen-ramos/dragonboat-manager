@@ -1,9 +1,11 @@
-import { AlertTriangle, ArrowLeft, ArrowLeftRight, CheckCircle2, ClipboardCheck, Copy, GitCompareArrows, MoreVertical, Pencil, Plus, Trash2, Trophy, Users } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, CheckCircle2, ClipboardCheck, Copy, GitCompareArrows, MoreVertical, Pencil, Plus, Trash2, Trophy, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CategoryForm } from '@/components/events/CategoryForm';
 import { EventForm } from '@/components/events/EventForm';
 import { LineupDiffDialog } from '@/components/events/LineupDiffDialog';
+import { BackLink } from '@/components/ui/BackLink';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
@@ -50,11 +52,7 @@ export function EventDetailPage() {
 
   return (
     <>
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-        <Link to="/events">
-          <ArrowLeft /> All events
-        </Link>
-      </Button>
+      <BackLink to="/events">All events</BackLink>
 
       <PageHeader
         title={event.data.name}
@@ -132,33 +130,22 @@ export function EventDetailPage() {
         <EventForm event={event.data} open onOpenChange={(open) => !open && setEditing(false)} />
       )}
 
-      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
-        <DialogContent
-          title={`Delete ${event.data.name}?`}
-          description="Its categories, crews, and lineups will be deleted too."
-          footer={
-            <>
-              <DialogClose asChild>
-                <Button>Cancel</Button>
-              </DialogClose>
-              <Button
-                variant="danger"
-                disabled={deleteEvent.isPending}
-                onClick={async () => {
-                  const name = event.data!.name;
-                  const bundle = await deleteEvent.mutateAsync(event.data!.id);
-                  undoableDelete(`Deleted ${name} and everything in it.`, bundle);
-                  navigate('/events');
-                }}
-              >
-                Delete event
-              </Button>
-            </>
-          }
-        >
-          <p className="text-sm text-muted">This cannot be undone.</p>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Delete ${event.data.name}?`}
+        description="Its categories, crews, and lineups will be deleted too."
+        confirmLabel="Delete event"
+        pending={deleteEvent.isPending}
+        onConfirm={async () => {
+          const name = event.data!.name;
+          const bundle = await deleteEvent.mutateAsync(event.data!.id);
+          undoableDelete(`Deleted ${name} and everything in it.`, bundle);
+          navigate('/events');
+        }}
+      >
+        <p className="text-sm text-muted">This cannot be undone.</p>
+      </ConfirmDialog>
     </>
   );
 }
@@ -270,31 +257,20 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
         </div>
       )}
 
-      <Dialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
-        <DialogContent
-          title={`Delete ${categoryName(category)}?`}
-          description={`Its ${pluralise(list.length, 'crew')} and their lineups will be deleted too.`}
-          footer={
-            <>
-              <DialogClose asChild>
-                <Button>Cancel</Button>
-              </DialogClose>
-              <Button
-                variant="danger"
-                onClick={async () => {
-                  const bundle = await deleteCategory.mutateAsync(category.id);
-                  undoableDelete(`Deleted ${categoryName(category)} and its crews.`, bundle);
-                  setConfirmingDelete(false);
-                }}
-              >
-                Delete category
-              </Button>
-            </>
-          }
-        >
-          <p className="text-sm text-muted">This cannot be undone.</p>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={`Delete ${categoryName(category)}?`}
+        description={`Its ${pluralise(list.length, 'crew')} and their lineups will be deleted too.`}
+        confirmLabel="Delete category"
+        pending={deleteCategory.isPending}
+        onConfirm={async () => {
+          const bundle = await deleteCategory.mutateAsync(category.id);
+          undoableDelete(`Deleted ${categoryName(category)} and its crews.`, bundle);
+        }}
+      >
+        <p className="text-sm text-muted">This cannot be undone.</p>
+      </ConfirmDialog>
     </section>
   );
 }

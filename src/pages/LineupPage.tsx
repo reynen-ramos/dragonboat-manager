@@ -13,9 +13,9 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { ArrowLeft, Printer, Redo2, Undo2 } from 'lucide-react';
+import { Printer, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/BalancePanel';
 import { BoatView, type SeatedOccupant } from '@/components/boat/BoatView';
 import { FillBoatDialog } from '@/components/boat/FillBoatDialog';
@@ -24,6 +24,7 @@ import { boatCoordinateGetter } from '@/components/boat/boatKeyboard';
 import type { DragData, DropData } from '@/components/boat/dragTypes';
 import { PaddlerChip } from '@/components/boat/PaddlerChip';
 import { RosterPanel } from '@/components/boat/RosterPanel';
+import { BackLink } from '@/components/ui/BackLink';
 import { Button } from '@/components/ui/Button';
 import { Card, EmptyState, LoadFailed, Spinner } from '@/components/ui/misc';
 import { planBalancedSeating, violatesSidePreference } from '@/domain/balance';
@@ -342,11 +343,9 @@ export function LineupPage() {
       onDragCancel={() => setDragging(undefined)}
     >
       <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-2">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to={`/events/${event.data.id}`}>
-            <ArrowLeft /> {event.data.name}
-          </Link>
-        </Button>
+        <BackLink to={`/events/${event.data.id}`} className="mb-0">
+          {event.data.name}
+        </BackLink>
         <div className="flex gap-1">
           <Button size="icon" variant="ghost" onClick={undo} disabled={!canUndo} aria-label="Undo">
             <Undo2 />

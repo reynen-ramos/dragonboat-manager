@@ -1,7 +1,8 @@
-import { ArrowLeft, Plus, Trash2, Trophy } from 'lucide-react';
+import { Plus, Trash2, Trophy } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AdvanceDialog } from '@/components/races/AdvanceDialog';
+import { BackLink } from '@/components/ui/BackLink';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
@@ -51,11 +52,7 @@ export function RaceDayPage() {
 
   return (
     <>
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-        <Link to={`/events/${event.data.id}`}>
-          <ArrowLeft /> {event.data.name}
-        </Link>
-      </Button>
+      <BackLink to={`/events/${event.data.id}`}>{event.data.name}</BackLink>
 
       <PageHeader
         title="Race day"
