@@ -32,13 +32,18 @@ interface Seed {
   first: string;
   last: string;
   gender: Gender;
-  weightKg: number;
+  /** Left blank on purpose for some members — missing weights are a state the app must show well. */
+  weightKg?: number;
   side: SidePreference;
   drum?: boolean;
   steer?: boolean;
   dob?: string;
   zones?: SeatZone[];
   status?: Member['status'];
+  joined?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
 }
 
 const SEEDS: Seed[] = [
@@ -78,6 +83,24 @@ const SEEDS: Seed[] = [
   { first: 'Sam', last: 'Corpuz', gender: 'other', weightKg: 68, side: 'left', dob: '2001-04-02' },
   { first: 'Iñigo', last: 'Barrera', gender: 'male', weightKg: 84, side: 'right', dob: '1994-12-15' },
   { first: 'Lorraine', last: 'Yap', gender: 'female', weightKg: 57, side: 'both', dob: '1996-06-30' },
+  // --- The wide tail: appended so earlier seed indexes stay stable. --------
+  // Veterans for the senior divisions, juniors, missing weights and birth
+  // dates, an inactive member and a second alumna, contact details and notes,
+  // spare drummers and steers — the roster states the app must handle.
+  { first: 'Lourdes', last: 'Abad', gender: 'female', weightKg: 63, side: 'left', steer: true, dob: '1962-05-19', joined: '2018-03-02', email: 'lourdes.abad@example.com', notes: 'Founding member. Steered the first crew the club ever raced.' },
+  { first: 'Ernesto', last: 'Buenaventura', gender: 'male', weightKg: 78, side: 'right', drum: true, dob: '1959-11-03', joined: '2019-06-15' },
+  { first: 'Corazon', last: 'Dizon', gender: 'female', weightKg: 61, side: 'both', dob: '1974-02-27', zones: ['engine'], joined: '2020-01-20' },
+  { first: 'Danilo', last: 'Flores', gender: 'male', weightKg: 88, side: 'left', dob: '1969-08-14', joined: '2021-09-05' },
+  { first: 'Katrina', last: 'Uy', gender: 'female', weightKg: 52, side: 'right', dob: '2009-04-22', zones: ['rockets'], joined: '2026-01-10', phone: '+63 917 555 0182', notes: 'Junior — parental consent form on file.' },
+  { first: 'Joshua', last: 'Mercado', gender: 'male', weightKg: 74, side: 'both', dob: '2004-07-08', joined: '2025-11-02' },
+  { first: 'Bianca', last: 'Roque', gender: 'female', weightKg: 58, side: 'left', dob: '2005-12-30', joined: '2026-02-14' },
+  { first: 'Oliver', last: 'Sy', gender: 'male', weightKg: 85, side: 'right', joined: '2025-08-01', notes: 'Birth date not on file yet.' },
+  { first: 'Pilar', last: 'Velasco', gender: 'female', side: 'both', dob: '1987-10-05', joined: '2024-05-30', notes: 'Weight not recorded — ask before the next weigh-in.' },
+  { first: 'Chester', last: 'Ong', gender: 'male', weightKg: 90, side: 'left', dob: '1992-03-11', status: 'inactive', joined: '2023-04-18', notes: 'On work assignment abroad until December.' },
+  { first: 'Margarita', last: 'Salcedo', gender: 'female', weightKg: 65, side: 'right', dob: '1980-06-09', status: 'alumni', joined: '2019-02-22' },
+  { first: 'Kiko', last: 'Manalo', gender: 'other', weightKg: 70, side: 'right', drum: true, steer: true, dob: '1997-01-25', joined: '2024-08-09', email: 'kiko.manalo@example.com' },
+  { first: 'Teresa', last: 'Lacson', gender: 'female', weightKg: 59, side: 'left', steer: true, dob: '1991-04-17', zones: ['stroke'], joined: '2022-10-12' },
+  { first: 'Bong', last: 'Padilla', gender: 'male', weightKg: 102, side: 'both', dob: '1985-09-28', zones: ['engine'], joined: '2023-07-07' },
 ];
 
 const memberId = (i: number) => `demo-member-${i + 1}`;
@@ -108,6 +131,7 @@ const CAT_TODAY_OPEN10 = 'demo-cat-today-open10';
 const CAT_UP_MIXED20 = 'demo-cat-up-mixed20';
 const CAT_UP_WOMEN10 = 'demo-cat-up-women10';
 const CAT_FUTURE_MIXED20 = 'demo-cat-future-mixed20';
+const CAT_FUTURE_SENIOR10 = 'demo-cat-future-senior10';
 
 const PAST_A = 'demo-crew-past-a';
 const PAST_B = 'demo-crew-past-b';
@@ -135,7 +159,10 @@ function buildMembers(): Member[] {
     canSteer: seed.steer ?? false,
     preferredZones: seed.zones,
     status: seed.status ?? 'active',
-    joinedAt: '2024-01-15',
+    joinedAt: seed.joined ?? '2024-01-15',
+    email: seed.email,
+    phone: seed.phone,
+    notes: seed.notes,
   }));
 }
 
@@ -252,11 +279,11 @@ function buildAvailability(today: string): Availability[] {
     // The finished regatta: nearly everyone answered, and two who said In but
     // were never seated show what "answered, not raced" history looks like.
     ...answers(PAST_REGATTA, at(80), {
-      in: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 29, 31, 34, 35],
+      in: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 15, 16, 18, 19, 21, 22, 24, 25, 27, 28, 29, 31, 34, 35, 36, 37],
       out: [[30, 'Shoulder rehab']],
     }),
     ...answers(PRACTICE_1, at(16), {
-      in: [0, 1, 2, 4, 5, 6, 7, 8, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 32, 33, 35],
+      in: [0, 1, 2, 4, 5, 6, 7, 8, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 32, 33, 35, 36, 38, 39],
       maybe: [9, 26],
       out: [
         [10, 'Night shift'],
@@ -276,12 +303,13 @@ function buildAvailability(today: string): Availability[] {
     // exercises all three fill tiers (reserves, In, Maybe), the opt-in
     // paddler pool, and the Show-everyone override over the unsigned.
     ...answers(UPCOMING, at(5), {
-      in: [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 19, 21, 22, 23, 24, 25, 27],
-      maybe: [5, 17, 26],
+      in: [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 18, 19, 21, 22, 23, 24, 25, 27, 36, 37, 40, 48, 49],
+      maybe: [5, 17, 26, 41],
       out: [
         [13, 'Moved away'],
         [20, 'Away that weekend'],
         [31, 'Wedding — his own'],
+        [44, 'Physio says rest this month'],
       ],
     }),
     ...answers(FUTURE, at(1), { in: [0, 15], maybe: [5] }),
@@ -407,6 +435,9 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     { id: CAT_UP_MIXED20, eventId: UPCOMING, boatSize: 20, genderClass: 'mixed', distanceM: 500 },
     { id: CAT_UP_WOMEN10, eventId: UPCOMING, boatSize: 10, genderClass: 'women', distanceM: 200 },
     { id: CAT_FUTURE_MIXED20, eventId: FUTURE, boatSize: 20, genderClass: 'mixed', distanceM: 500 },
+    // No crew yet on purpose: an age-division category to build from scratch,
+    // now that the roster has enough over-40 paddlers to fill it.
+    { id: CAT_FUTURE_SENIOR10, eventId: FUTURE, boatSize: 10, genderClass: 'open', distanceM: 500, ageDivision: 'seniorA' },
   ];
 
   const crews: Crew[] = [
