@@ -9,7 +9,6 @@ import type {
   PaddlerAssignment,
   SeatPosition,
   SeatZone,
-  Side,
 } from '@/domain/types';
 import { cn } from '@/utils/cn';
 import { fullName } from '@/utils/format';
@@ -109,11 +108,18 @@ export function BoatView({
   );
 }
 
-/** The hull outline: a pointed bow at the top, tapered stern at the bottom. */
+/**
+ * The hull outline: a pointed bow at the top, tapered stern at the bottom —
+ * the original quiet lens, now a narrow band down the centre spine.
+ *
+ * The band is a fixed 56px, matching the row-number column exactly at every
+ * screen width, so the numbers ride on the deck and the paddler cards sit
+ * beside the boat rather than on it.
+ */
 function Hull() {
   return (
     <svg
-      className="pointer-events-none absolute inset-0 h-full w-full text-brand-600/25"
+      className="pointer-events-none absolute inset-y-0 left-1/2 h-full w-14 -translate-x-1/2 text-brand-600/25"
       viewBox="0 0 100 400"
       preserveAspectRatio="none"
       aria-hidden="true"
@@ -160,27 +166,37 @@ function BoatRow({
   return (
     <div className="relative">
       {showZoneLabel && (
-        <p className="mb-1 mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
-          {ZONE_LABELS[zone]}
+        <p className="mb-1 mt-2 flex justify-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
+          {/* A solid pill, or the hull behind strikes through the label. */}
+          <span className="surface rounded-full border border-subtle px-2 py-0.5">
+            {ZONE_LABELS[zone]}
+          </span>
         </p>
       )}
-      <div className="flex items-stretch gap-1.5">
-        {(['left', 'right'] as Side[]).map((side, index) => (
-          <div key={side} className="flex flex-1 items-center gap-1.5">
-            {index === 1 && (
-              <span className="tabular w-4 shrink-0 text-center text-[0.65rem] font-medium text-muted">
-                {row}
-              </span>
-            )}
-            <Seat
-              seat={{ row, side }}
-              occupant={occupantAt({ row, side })}
-              onTogglePin={onTogglePin}
-              highlighted={highlighted}
-              onTap={onSeatTap}
-            />
-          </div>
-        ))}
+      {/*
+        The number is its own column between two equal seats. Nesting it
+        inside the right side's wrapper made the right card pay its width —
+        the two sides were never quite the same size, and widening the cell
+        for the hull made the imbalance obvious.
+      */}
+      <div className="flex items-center gap-1.5">
+        <Seat
+          seat={{ row, side: 'left' }}
+          occupant={occupantAt({ row, side: 'left' })}
+          onTogglePin={onTogglePin}
+          highlighted={highlighted}
+          onTap={onSeatTap}
+        />
+        <span className="tabular w-14 shrink-0 text-center text-[0.65rem] font-medium text-muted">
+          {row}
+        </span>
+        <Seat
+          seat={{ row, side: 'right' }}
+          occupant={occupantAt({ row, side: 'right' })}
+          onTogglePin={onTogglePin}
+          highlighted={highlighted}
+          onTap={onSeatTap}
+        />
       </div>
     </div>
   );
