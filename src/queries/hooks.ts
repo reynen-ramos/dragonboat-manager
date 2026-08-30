@@ -149,7 +149,11 @@ export const useSettingsQuery = () =>
   useQuery({ queryKey: keys.settings, queryFn: () => adapter.settings.get() });
 
 export function useSettings(): ClubSettings {
-  return useSettingsQuery().data ?? DEFAULT_CLUB_SETTINGS;
+  const stored = useSettingsQuery().data;
+  // Per-key merge, not `??`: a settings object saved by an older build (or
+  // restored from an old backup) predates newer keys like `eventTypes`, and
+  // those must fall back to the defaults individually.
+  return stored ? { ...DEFAULT_CLUB_SETTINGS, ...stored } : DEFAULT_CLUB_SETTINGS;
 }
 
 // --- Writes ------------------------------------------------------------------

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatDate } from '@/domain/dates';
+import { BUILTIN_EVENT_TYPES } from '@/domain/eventTypes';
 import type { ClubEvent } from '@/domain/types';
 import { EventsCalendar } from './EventsCalendar';
 
@@ -31,7 +32,7 @@ const events: ClubEvent[] = [
 const renderCalendar = (onPickDay?: (iso: string) => void) =>
   render(
     <MemoryRouter>
-      <EventsCalendar events={events} onPickDay={onPickDay} />
+      <EventsCalendar events={events} eventTypes={BUILTIN_EVENT_TYPES} onPickDay={onPickDay} />
     </MemoryRouter>,
   );
 

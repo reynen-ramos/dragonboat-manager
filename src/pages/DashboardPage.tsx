@@ -7,13 +7,16 @@ import type { ClubEvent } from '@/domain/types';
 import { exportSnapshot, useEvents, useLoadDemoClub, useMembers } from '@/queries/hooks';
 import { backupDue, useBackupReminder } from '@/stores/backupReminder';
 import { downloadTextFile } from '@/utils/download';
-import { categoryName, pluralise, TRAINING_KIND_LABEL } from '@/utils/format';
-import { useCategories } from '@/queries/hooks';
+import { eventBase, trainingKindLabel } from '@/domain/eventTypes';
+import { categoryName, pluralise } from '@/utils/format';
+import { useCategories, useSettings } from '@/queries/hooks';
 
 export function DashboardPage() {
   const members = useMembers();
   const events = useEvents();
+  const settings = useSettings();
   const loadDemo = useLoadDemoClub();
+  const baseOf = (e: ClubEvent) => eventBase(e.type, settings.eventTypes);
 
   if (members.isLoading || events.isLoading) return <Spinner />;
   if (members.isError || events.isError) {
@@ -110,15 +113,16 @@ export function DashboardPage() {
 
       {/* Races and trainings answer different questions — "what are we
           entering?" versus "when do we meet this week?" — so each gets its
-          own list instead of one interleaved feed. */}
-      <UpcomingGroup title="Upcoming races" events={upcoming.filter((e) => e.type === 'race')} />
+          own list instead of one interleaved feed. Custom types group by
+          the behaviour they declare in Settings. */}
+      <UpcomingGroup title="Upcoming races" events={upcoming.filter((e) => baseOf(e) === 'race')} />
       <UpcomingGroup
         title="Upcoming trainings"
-        events={upcoming.filter((e) => e.type === 'practice')}
+        events={upcoming.filter((e) => baseOf(e) === 'practice')}
       />
       <UpcomingGroup
         title="Other upcoming events"
-        events={upcoming.filter((e) => e.type === 'other')}
+        events={upcoming.filter((e) => baseOf(e) === 'other')}
       />
     </>
   );
@@ -140,6 +144,8 @@ function UpcomingGroup({ title, events }: { title: string; events: ClubEvent[] }
 
 function EventRow({ event }: { event: ClubEvent }) {
   const categories = useCategories(event.id);
+  const settings = useSettings();
+  const base = eventBase(event.type, settings.eventTypes);
 
   return (
     <Link
@@ -149,7 +155,9 @@ function EventRow({ event }: { event: ClubEvent }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate font-medium">{event.name}</p>
-          {event.trainingKind && <Badge>{TRAINING_KIND_LABEL[event.trainingKind]}</Badge>}
+          {event.trainingKind && (
+            <Badge>{trainingKindLabel(event.trainingKind, settings.trainingKinds)}</Badge>
+          )}
         </div>
         <p className="truncate text-sm text-muted">
           {formatDate(event.startDate)}
@@ -157,7 +165,7 @@ function EventRow({ event }: { event: ClubEvent }) {
             ? ` · ${categories.data.map(categoryName).join(', ')}`
             : // "No categories yet" is a nudge to plan a race; on a training
               // or social it is just noise, so those show where to turn up.
-              event.type === 'race'
+              base === 'race'
               ? ' · No categories yet'
               : event.location
                 ? ` · ${event.location}`

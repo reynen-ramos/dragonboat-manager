@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { todayIso } from '@/domain/dates';
-import type { ClubEvent, EventType, TrainingKind } from '@/domain/types';
-import { useCreateEvent, useUpdateEvent } from '@/queries/hooks';
-import { TRAINING_KIND_LABEL } from '@/utils/format';
+import { eventBase } from '@/domain/eventTypes';
+import type { ClubEvent } from '@/domain/types';
+import { useCreateEvent, useSettings, useUpdateEvent } from '@/queries/hooks';
 
 type Draft = Omit<ClubEvent, 'id'>;
 
@@ -21,12 +21,22 @@ export function EventForm({
   initialDate?: string;
   onOpenChange: (open: boolean) => void;
 }) {
+  const settings = useSettings();
   const [draft, setDraft] = useState<Draft>(
-    () => event ?? { name: '', startDate: initialDate ?? todayIso(), type: 'race' },
+    () =>
+      event ?? {
+        name: '',
+        startDate: initialDate ?? todayIso(),
+        // The club can have renamed or replaced the built-ins; default to
+        // whatever heads its own list.
+        type: settings.eventTypes[0]?.id ?? 'race',
+      },
   );
   const [error, setError] = useState<string>();
   const create = useCreateEvent();
   const update = useUpdateEvent();
+
+  const base = eventBase(draft.type, settings.eventTypes);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -41,12 +51,12 @@ export function EventForm({
       return;
     }
     setError(undefined);
-    // A training kind only means something on a practice; switching the type
-    // away must not leave a stale kind on a race.
+    // A training kind only means something on a practice-like type; switching
+    // the type away must not leave a stale kind on a race.
     const cleaned = {
       ...draft,
       name: draft.name.trim(),
-      trainingKind: draft.type === 'practice' ? draft.trainingKind : undefined,
+      trainingKind: base === 'practice' ? draft.trainingKind : undefined,
     };
     if (event) await update.mutateAsync({ id: event.id, patch: cleaned });
     else await create.mutateAsync(cleaned);
@@ -85,32 +95,33 @@ export function EventForm({
 
           <Field label="Type">
             {(id) => (
-              <Select
-                id={id}
-                value={draft.type}
-                onChange={(e) => set('type', e.target.value as EventType)}
-              >
-                <option value="race">Race / regatta</option>
-                <option value="practice">Practice</option>
-                <option value="other">Other</option>
+              <Select id={id} value={draft.type} onChange={(e) => set('type', e.target.value)}>
+                {settings.eventTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+                {/* An event whose type was removed from settings keeps it
+                    rather than being silently re-typed by the edit form. */}
+                {!settings.eventTypes.some((t) => t.id === draft.type) && (
+                  <option value={draft.type}>{draft.type}</option>
+                )}
               </Select>
             )}
           </Field>
 
-          {draft.type === 'practice' && (
+          {base === 'practice' && (
             <Field label="Training kind">
               {(id) => (
                 <Select
                   id={id}
                   value={draft.trainingKind ?? ''}
-                  onChange={(e) =>
-                    set('trainingKind', (e.target.value || undefined) as TrainingKind | undefined)
-                  }
+                  onChange={(e) => set('trainingKind', e.target.value || undefined)}
                 >
                   <option value="">Unspecified</option>
-                  {(Object.keys(TRAINING_KIND_LABEL) as TrainingKind[]).map((kind) => (
-                    <option key={kind} value={kind}>
-                      {TRAINING_KIND_LABEL[kind]}
+                  {settings.trainingKinds.map((kind) => (
+                    <option key={kind.id} value={kind.id}>
+                      {kind.label}
                     </option>
                   ))}
                 </Select>

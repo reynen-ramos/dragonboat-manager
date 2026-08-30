@@ -39,6 +39,29 @@ describe('EventForm training kind', () => {
     });
   });
 
+  it('offers custom types from settings, with kinds following the declared behaviour', async () => {
+    const { DEFAULT_CLUB_SETTINGS } = await import('@/domain/rules.config');
+    await mockAdapter.settings.save({
+      ...DEFAULT_CLUB_SETTINGS,
+      eventTypes: [
+        ...DEFAULT_CLUB_SETTINGS.eventTypes,
+        { id: 'gym-session', label: 'Gym Session', base: 'practice' },
+      ],
+    });
+    renderForm();
+
+    await userEvent.type(await screen.findByLabelText('Name'), 'Tuesday Gym');
+    // A custom practice-base type gets the training-kind select too.
+    await userEvent.selectOptions(screen.getByLabelText('Type'), 'gym-session');
+    await userEvent.selectOptions(screen.getByLabelText('Training kind'), 'supplementary');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(async () => {
+      const [event] = await mockAdapter.events.list();
+      expect(event).toMatchObject({ type: 'gym-session', trainingKind: 'supplementary' });
+    });
+  });
+
   it('drops a stale kind when the type is switched away from practice', async () => {
     renderForm();
 

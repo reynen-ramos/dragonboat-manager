@@ -13,7 +13,8 @@ import {
   type MonthRef,
 } from '@/domain/calendar';
 import { formatDate, todayIso } from '@/domain/dates';
-import type { ClubEvent, EventType } from '@/domain/types';
+import { eventBase } from '@/domain/eventTypes';
+import type { ClubEvent, EventBase, EventTypeDef } from '@/domain/types';
 import { cn } from '@/utils/cn';
 
 /**
@@ -26,7 +27,7 @@ import { cn } from '@/utils/cn';
  * while the previous month is on screen.
  */
 
-const TYPE_STYLE: Record<EventType, { chip: string; dot: string; label: string }> = {
+const TYPE_STYLE: Record<EventBase, { chip: string; dot: string; label: string }> = {
   race: {
     chip: 'bg-brand-600 text-white hover:bg-brand-700',
     dot: 'bg-brand-600',
@@ -48,9 +49,12 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function EventsCalendar({
   events,
+  eventTypes,
   onPickDay,
 }: {
   events: ClubEvent[];
+  /** The club's event types — chips are coloured by each type's behaviour. */
+  eventTypes: EventTypeDef[];
   /** Called with the day's ISO date — the page opens a pre-dated event form. */
   onPickDay?: (iso: string) => void;
 }) {
@@ -97,6 +101,7 @@ export function EventsCalendar({
                 dimmed={!inMonth(iso, month)}
                 isToday={iso === today}
                 events={sorted.filter((e) => occursOn(e, iso))}
+                eventTypes={eventTypes}
                 onPickDay={onPickDay}
               />
             ))}
@@ -105,10 +110,10 @@ export function EventsCalendar({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        {(Object.keys(TYPE_STYLE) as EventType[]).map((type) => (
-          <span key={type} className="flex items-center gap-1.5">
-            <span aria-hidden="true" className={cn('size-2.5 rounded-full', TYPE_STYLE[type].dot)} />
-            {TYPE_STYLE[type].label}
+        {(Object.keys(TYPE_STYLE) as EventBase[]).map((base) => (
+          <span key={base} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className={cn('size-2.5 rounded-full', TYPE_STYLE[base].dot)} />
+            {TYPE_STYLE[base].label}
           </span>
         ))}
       </div>
@@ -121,12 +126,14 @@ function DayCell({
   dimmed,
   isToday,
   events,
+  eventTypes,
   onPickDay,
 }: {
   iso: string;
   dimmed: boolean;
   isToday: boolean;
   events: ClubEvent[];
+  eventTypes: EventTypeDef[];
   onPickDay?: (iso: string) => void;
 }) {
   return (
@@ -169,7 +176,7 @@ function DayCell({
           title={event.name}
           className={cn(
             'block truncate rounded px-1.5 py-0.5 text-[11px] font-medium leading-tight transition-colors',
-            TYPE_STYLE[event.type].chip,
+            TYPE_STYLE[eventBase(event.type, eventTypes)].chip,
           )}
         >
           {event.name}

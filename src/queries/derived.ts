@@ -207,6 +207,7 @@ export function useMemberHistory(memberId: string | undefined) {
   const crews = useAllCrews();
   const assignments = useMemberAssignments(memberId);
   const availability = useMemberAvailability(memberId);
+  const settings = useSettings();
 
   const queries = [events, categories, crews, assignments, availability];
   const isLoading = queries.some((q) => q.isLoading);
@@ -221,8 +222,9 @@ export function useMemberHistory(memberId: string | undefined) {
         crews: crews.data ?? [],
         assignments: assignments.data ?? [],
         availability: availability.data ?? [],
+        eventTypes: settings.eventTypes,
       }),
-    [events.data, categories.data, crews.data, assignments.data, availability.data],
+    [events.data, categories.data, crews.data, assignments.data, availability.data, settings.eventTypes],
   );
 
   return {
