@@ -1,15 +1,16 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { GripVertical, Search } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Input, Select } from '@/components/ui/Field';
+import { Select } from '@/components/ui/Field';
 import { Badge } from '@/components/ui/misc';
 import type { AvailabilityStatus, Member } from '@/domain/types';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { cn } from '@/utils/cn';
+import { compareMembers, type MemberSortKey } from '@/utils/memberSort';
 import { fullName, pluralise } from '@/utils/format';
 import { ROSTER_DROPPABLE_ID, rosterDraggableId, type DragData, type DropData } from './dragTypes';
 import { PaddlerChip } from './PaddlerChip';
 
-type SortKey = 'name' | 'weight' | 'side';
 
 /**
  * The pool of paddlers not yet in this crew.
@@ -34,7 +35,7 @@ export function RosterPanel({
   onSelectMember: (memberId: string | undefined) => void;
 }) {
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('name');
+  const [sort, setSort] = useState<MemberSortKey>('name');
   const [showUnavailable, setShowUnavailable] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
@@ -49,11 +50,7 @@ export function RosterPanel({
       .filter((m) => m.status === 'active')
       .filter((m) => (showUnavailable ? true : availability.get(m.id) !== 'out'))
       .filter((m) => (query ? fullName(m).toLowerCase().includes(query) : true))
-      .sort((a, b) => {
-        if (sort === 'weight') return (b.weightKg ?? 0) - (a.weightKg ?? 0);
-        if (sort === 'side') return a.sidePreference.localeCompare(b.sidePreference);
-        return fullName(a).localeCompare(fullName(b));
-      });
+      .sort(compareMembers(sort));
   }, [members, inCrewMemberIds, availability, showUnavailable, search, sort]);
 
   const hiddenCount = members.filter(
@@ -73,20 +70,17 @@ export function RosterPanel({
           <h2 className="text-sm font-semibold">Available paddlers</h2>
           <Badge>{available.length}</Badge>
         </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <Input
-            className="h-9 pl-9 text-sm"
-            placeholder="Search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search paddlers"
-          />
-        </div>
+        <SearchInput
+          inputClassName="h-9 text-sm"
+          placeholder="Search"
+          aria-label="Search paddlers"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <Select
           className="h-9 text-sm"
           value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
+          onChange={(e) => setSort(e.target.value as MemberSortKey)}
           aria-label="Sort paddlers"
         >
           <option value="name">Name</option>

@@ -1,14 +1,16 @@
-import { Download, Plus, Search, Upload, Users } from 'lucide-react';
+import { Download, Plus, Upload, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CsvImportDialog } from '@/components/members/CsvImportDialog';
 import { MemberForm } from '@/components/members/MemberForm';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { Button } from '@/components/ui/Button';
-import { Input, Select } from '@/components/ui/Field';
+import { Select } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { ageOn, todayIso } from '@/domain/dates';
 import type { Member, MemberStatus, SidePreference } from '@/domain/types';
 import { useMembers } from '@/queries/hooks';
+import { compareMembers, type MemberSortKey } from '@/utils/memberSort';
 import {
   fullName,
   formatWeight,
@@ -20,14 +22,13 @@ import {
 import { membersToCsv } from '@/utils/csv';
 import { downloadTextFile } from '@/utils/download';
 
-type SortKey = 'name' | 'weight' | 'side';
 
 export function MembersPage() {
   const members = useMembers();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<MemberStatus | 'all'>('active');
   const [side, setSide] = useState<SidePreference | 'all'>('all');
-  const [sort, setSort] = useState<SortKey>('name');
+  const [sort, setSort] = useState<MemberSortKey>('name');
   const [editing, setEditing] = useState<Member | 'new'>();
   const [importing, setImporting] = useState(false);
 
@@ -37,11 +38,7 @@ export function MembersPage() {
       .filter((m) => (status === 'all' ? true : m.status === status))
       .filter((m) => (side === 'all' ? true : m.sidePreference === side))
       .filter((m) => (query ? fullName(m).toLowerCase().includes(query) : true))
-      .sort((a, b) => {
-        if (sort === 'weight') return (b.weightKg ?? 0) - (a.weightKg ?? 0);
-        if (sort === 'side') return a.sidePreference.localeCompare(b.sidePreference);
-        return fullName(a).localeCompare(fullName(b));
-      });
+      .sort(compareMembers(sort));
   }, [members.data, search, status, side, sort]);
 
   if (members.isLoading) return <Spinner />;
@@ -99,16 +96,13 @@ export function MembersPage() {
       ) : (
         <>
           <div className="mb-4 flex flex-wrap gap-2">
-            <div className="relative min-w-48 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-              <Input
-                className="pl-9"
-                placeholder="Search by name"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search members"
-              />
-            </div>
+            <SearchInput
+              className="min-w-48 flex-1"
+              placeholder="Search by name"
+              aria-label="Search members"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
             <Select
               className="w-auto"
               value={status}
@@ -134,7 +128,7 @@ export function MembersPage() {
             <Select
               className="w-auto"
               value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
+              onChange={(e) => setSort(e.target.value as MemberSortKey)}
               aria-label="Sort members"
             >
               <option value="name">Sort by name</option>

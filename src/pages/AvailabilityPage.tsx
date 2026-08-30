@@ -1,4 +1,4 @@
-import { ArrowLeft, Search, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
@@ -7,7 +7,9 @@ import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/comp
 import { formatDate } from '@/domain/dates';
 import type { Availability, AvailabilityStatus, Member } from '@/domain/types';
 import { useAvailability, useEvent, useMembers, useSetAvailability } from '@/queries/hooks';
+import { BackLink } from '@/components/ui/BackLink';
 import { RadioCards } from '@/components/ui/RadioCards';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { fullName, initials, pluralise, SIDE_MARK } from '@/utils/format';
 
 /**
@@ -82,11 +84,7 @@ export function AvailabilityPage() {
 
   return (
     <>
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-        <Link to={`/events/${event.data.id}`}>
-          <ArrowLeft /> {event.data.name}
-        </Link>
-      </Button>
+      <BackLink to={`/events/${event.data.id}`}>{event.data.name}</BackLink>
 
       <PageHeader
         title="Availability"
@@ -126,16 +124,13 @@ export function AvailabilityPage() {
             </Card>
           )}
 
-          <div className="relative mb-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <Input
-              className="pl-9"
-              placeholder="Search by name"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search members"
-            />
-          </div>
+          <SearchInput
+            className="mb-3"
+            placeholder="Search by name"
+            aria-label="Search members"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
           {visible.length === 0 ? (
             <EmptyState title="Nobody matches that search" />
