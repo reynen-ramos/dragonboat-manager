@@ -101,6 +101,37 @@ const SEEDS: Seed[] = [
   { first: 'Kiko', last: 'Manalo', gender: 'other', weightKg: 70, side: 'right', drum: true, steer: true, dob: '1997-01-25', joined: '2024-08-09', email: 'kiko.manalo@example.com' },
   { first: 'Teresa', last: 'Lacson', gender: 'female', weightKg: 59, side: 'left', steer: true, dob: '1991-04-17', zones: ['stroke'], joined: '2022-10-12' },
   { first: 'Bong', last: 'Padilla', gender: 'male', weightKg: 102, side: 'both', dob: '1985-09-28', zones: ['engine'], joined: '2023-07-07' },
+  // --- The second intake: thirty more, so the club trains at real scale. ----
+  { first: 'Ramil', last: 'Agbayani', gender: 'male', weightKg: 86, side: 'right', dob: '1990-07-12', joined: '2025-03-15' },
+  { first: 'Cherry', last: 'Alcantara', gender: 'female', weightKg: 57, side: 'left', dob: '1994-03-08', joined: '2025-04-02' },
+  { first: 'Dindo', last: 'Balagtas', gender: 'male', weightKg: 88, side: 'both', dob: '1988-11-23', zones: ['engine'], joined: '2024-06-19' },
+  { first: 'Maricel', last: 'Buenafe', gender: 'female', weightKg: 60, side: 'right', dob: '1997-05-17', joined: '2025-01-28' },
+  { first: 'Jerome', last: 'Cabrera', gender: 'male', weightKg: 80, side: 'left', dob: '1995-09-02', joined: '2024-09-14' },
+  { first: 'Liza', last: 'Carandang', gender: 'female', weightKg: 55, side: 'both', dob: '2001-12-11', joined: '2025-06-07' },
+  { first: 'Efren', last: 'Datu', gender: 'male', weightKg: 93, side: 'right', dob: '1983-04-26', zones: ['engine'], joined: '2023-11-30' },
+  { first: 'Rowena', last: 'Escano', gender: 'female', weightKg: 62, side: 'left', dob: '1992-08-30', joined: '2024-02-25' },
+  { first: 'Paulo', last: 'Feliciano', gender: 'male', weightKg: 76, side: 'both', dob: '1999-02-14', zones: ['rockets'], joined: '2025-08-11' },
+  { first: 'Mae', last: 'Galang', gender: 'female', weightKg: 58, side: 'right', dob: '2000-06-21', joined: '2025-05-19' },
+  { first: 'Nonoy', last: 'Habagat', gender: 'male', weightKg: 84, side: 'left', drum: true, dob: '1991-10-05', joined: '2022-07-23' },
+  { first: 'Ivy', last: 'Ignacio', gender: 'female', weightKg: 61, side: 'both', dob: '1996-01-27', joined: '2024-10-06' },
+  { first: 'Carding', last: 'Jimenez', gender: 'male', weightKg: 89, side: 'right', dob: '1986-12-09', joined: '2023-05-12' },
+  { first: 'Len', last: 'Katigbak', gender: 'female', weightKg: 56, side: 'left', dob: '2003-03-19', joined: '2026-01-17' },
+  { first: 'Bobby', last: 'Lazaro', gender: 'male', weightKg: 82, side: 'both', dob: '1993-07-04', joined: '2024-04-08' },
+  { first: 'Mika', last: 'Legaspi', gender: 'female', weightKg: 59, side: 'right', steer: true, dob: '1998-04-15', joined: '2023-09-26' },
+  { first: 'Ariel', last: 'Magsino', gender: 'male', weightKg: 78, side: 'left', dob: '1997-11-08', joined: '2025-02-13' },
+  { first: 'Joy', last: 'Natividad', gender: 'female', weightKg: 63, side: 'both', dob: '1989-05-25', joined: '2022-12-04' },
+  { first: 'Omar', last: 'Olivares', gender: 'male', weightKg: 87, side: 'right', dob: '1992-02-17', joined: '2024-08-21' },
+  { first: 'Precious', last: 'Panganiban', gender: 'female', weightKg: 54, side: 'left', dob: '2004-08-03', zones: ['rockets'], joined: '2026-02-09' },
+  { first: 'Quintin', last: 'Quezon', gender: 'male', weightKg: 91, side: 'both', dob: '1985-06-14', zones: ['engine'], joined: '2023-03-17' },
+  { first: 'Ruby', last: 'Rosales', gender: 'female', weightKg: 60, side: 'right', dob: '1995-10-29', joined: '2025-07-30' },
+  { first: 'Sandro', last: 'Sison', gender: 'male', weightKg: 79, side: 'left', dob: '2005-01-22', joined: '2026-03-05' },
+  { first: 'Tintin', last: 'Trinidad', gender: 'female', weightKg: 57, side: 'both', dob: '2002-09-06', joined: '2025-09-18' },
+  { first: 'Uly', last: 'Umali', gender: 'male', weightKg: 85, side: 'right', steer: true, dob: '1987-03-31', joined: '2021-06-29' },
+  { first: 'Vicky', last: 'Villamor', gender: 'female', weightKg: 64, side: 'left', dob: '1979-12-18', joined: '2022-04-16' },
+  { first: 'Waldo', last: 'Wenceslao', gender: 'male', weightKg: 90, side: 'both', dob: '1990-08-08', status: 'inactive', joined: '2023-08-02', notes: 'Long-haul work rotation until next year.' },
+  { first: 'Xandra', last: 'Ximenes', gender: 'female', weightKg: 58, side: 'right', dob: '1996-07-07', status: 'inactive', joined: '2024-11-11' },
+  { first: 'Yeng', last: 'Yuzon', gender: 'female', weightKg: 55, side: 'both', dob: '2008-10-12', joined: '2026-04-25', notes: 'Junior — parental consent form on file.' },
+  { first: 'Zaldy', last: 'Zabala', gender: 'male', weightKg: 83, side: 'left', drum: true, dob: '1968-04-04', joined: '2020-10-03' },
 ];
 
 const memberId = (i: number) => `demo-member-${i + 1}`;
@@ -110,6 +141,15 @@ const shiftDate = (iso: string, days: number): string => {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+};
+
+/** 0 = Sunday … 6 = Saturday, matching getUTCDay. */
+const dayOfWeek = (iso: string): number => new Date(`${iso}T00:00:00Z`).getUTCDay();
+
+const lastWeekdayBefore = (today: string, dow: number): string => {
+  let d = shiftDate(today, -1);
+  while (dayOfWeek(d) !== dow) d = shiftDate(d, -1);
+  return d;
 };
 
 // --- Ids -----------------------------------------------------------------
@@ -345,9 +385,101 @@ function buildRaceEntries(): RaceEntry[] {
   ];
 }
 
+// --- The training season -----------------------------------------------------
+
+interface TrainingSeason {
+  events: ClubEvent[];
+  categories: Category[];
+  crews: Crew[];
+  assignments: Assignment[];
+  availability: Availability[];
+}
+
+/**
+ * The club's weekly rhythm, generated from New Year's Day up to (but never
+ * including) today: water training every Saturday and Sunday, land training
+ * every Tuesday and Thursday.
+ *
+ * Sign-ups are deterministic — a small hash of member index and date decides
+ * who said In, Maybe, or Out — so the same pseudo-club turns up on every
+ * rebuild and screenshots stay reproducible. Water sessions get one or two
+ * ten-seat training boats built from whoever said In (so attendance and
+ * bench reports have seatings to count); land sessions are sign-up only, the
+ * way a gym night really is.
+ */
+function buildTrainingSeason(today: string, members: Member[], skip: Set<string>): TrainingSeason {
+  const season: TrainingSeason = { events: [], categories: [], crews: [], assignments: [], availability: [] };
+  const seasonStart = `${today.slice(0, 4)}-01-01`;
+  const activeIds = members.filter((m) => m.status === 'active').map((m) => m.id);
+  const hashDay = (iso: string) => Number(iso.slice(5, 7)) * 31 + Number(iso.slice(8, 10));
+
+  for (let d = seasonStart; d < today; d = shiftDate(d, 1)) {
+    if (skip.has(d)) continue;
+    const dow = dayOfWeek(d);
+    const water = dow === 6 || dow === 0;
+    const land = dow === 2 || dow === 4;
+    if (!water && !land) continue;
+
+    const eventId = `demo-training-${d}`;
+    season.events.push({
+      id: eventId,
+      name: water
+        ? dow === 6
+          ? 'Saturday Water Session'
+          : 'Sunday Water Session'
+        : dow === 2
+          ? 'Tuesday Land Training'
+          : 'Thursday Land Training',
+      startDate: d,
+      location: water ? 'Club dock' : 'Boathouse gym',
+      type: 'practice',
+      trainingKind: water ? 'water' : 'land',
+    });
+
+    const attending: string[] = [];
+    activeIds.forEach((memberId, i) => {
+      const h = (i * 7 + hashDay(d) * 13) % 20;
+      const status = h < 6 ? 'in' : h === 6 ? 'maybe' : h === 7 ? 'out' : undefined;
+      if (!status) return;
+      season.availability.push({ eventId, memberId, status, updatedAt: `${d}T09:00:00.000Z` });
+      if (status === 'in') attending.push(memberId);
+    });
+
+    if (!water) continue;
+
+    // One boat, or two when the dock is busy enough to fill most of both.
+    const boats = attending.length >= 14 ? 2 : 1;
+    for (let boat = 0; boat < boats; boat++) {
+      const paddlers = attending.slice(boat * 10, boat * 10 + 10);
+      if (paddlers.length === 0) break;
+      const categoryId = `demo-training-cat-${d}-${boat + 1}`;
+      const crewId = `demo-training-crew-${d}-${boat + 1}`;
+      season.categories.push({ id: categoryId, eventId, boatSize: 10, genderClass: 'open' });
+      season.crews.push({ id: crewId, categoryId, name: boats === 1 ? 'Training Boat' : `Boat ${boat + 1}` });
+      paddlers.forEach((memberId, j) => {
+        season.assignments.push({
+          id: `demo-training-a-${d}-${boat + 1}-${j + 1}`,
+          crewId,
+          memberId,
+          role: 'paddler',
+          seat: { row: (j % 5) + 1, side: j < 5 ? 'left' : 'right' },
+        } as Assignment);
+      });
+    }
+  }
+
+  return season;
+}
+
 // --- The snapshot ------------------------------------------------------------
 
 export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
+  // The two hand-built practices sit on the club's real weekly grid — the
+  // last Saturday water session and the last Tuesday land session — and the
+  // generated season skips their dates so no day trains twice.
+  const lastSaturday = lastWeekdayBefore(today, 6);
+  const lastTuesday = lastWeekdayBefore(today, 2);
+
   const events: ClubEvent[] = [
     {
       id: PAST_REGATTA,
@@ -360,8 +492,8 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     },
     {
       id: PRACTICE_1,
-      name: 'Tuesday Water Session',
-      startDate: shiftDate(today, -14),
+      name: 'Saturday Water Session',
+      startDate: lastSaturday,
       location: 'Club dock',
       type: 'practice',
       trainingKind: 'water',
@@ -369,7 +501,7 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     {
       id: PRACTICE_2,
       name: 'Erg & Technique Night',
-      startDate: shiftDate(today, -7),
+      startDate: lastTuesday,
       location: 'Boathouse',
       type: 'practice',
       trainingKind: 'land',
@@ -430,7 +562,8 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
   const categories: Category[] = [
     { id: CAT_PAST_OPEN10, eventId: PAST_REGATTA, boatSize: 10, genderClass: 'open', distanceM: 200 },
     { id: CAT_PAST_MIXED20, eventId: PAST_REGATTA, boatSize: 20, genderClass: 'mixed', distanceM: 500 },
-    { id: CAT_PRACTICE, eventId: PRACTICE_2, boatSize: 10, genderClass: 'open' },
+    // The squad boat belongs to the water session — a gym night has no hull.
+    { id: CAT_PRACTICE, eventId: PRACTICE_1, boatSize: 10, genderClass: 'open' },
     { id: CAT_TODAY_OPEN10, eventId: TODAY_RACE, boatSize: 10, genderClass: 'open', distanceM: 250 },
     { id: CAT_UP_MIXED20, eventId: UPCOMING, boatSize: 20, genderClass: 'mixed', distanceM: 500 },
     { id: CAT_UP_WOMEN10, eventId: UPCOMING, boatSize: 10, genderClass: 'women', distanceM: 200 },
@@ -453,15 +586,22 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     { id: WOMEN_CREW_ID, categoryId: CAT_UP_WOMEN10, name: 'Women A' },
   ];
 
+  const members = buildMembers();
+  const season = buildTrainingSeason(
+    today,
+    members,
+    new Set([today, lastSaturday, lastTuesday]),
+  );
+
   return {
     version: SNAPSHOT_VERSION,
     exportedAt: new Date().toISOString(),
-    members: buildMembers(),
-    events,
-    categories,
-    crews,
-    assignments: buildAssignments(),
-    availability: buildAvailability(today),
+    members,
+    events: [...events, ...season.events],
+    categories: [...categories, ...season.categories],
+    crews: [...crews, ...season.crews],
+    assignments: [...buildAssignments(), ...season.assignments],
+    availability: [...buildAvailability(today), ...season.availability],
     raceEntries: buildRaceEntries(),
     settings: DEFAULT_CLUB_SETTINGS,
   };

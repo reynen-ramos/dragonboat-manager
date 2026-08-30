@@ -63,11 +63,13 @@ npm run dev
 ```
 
 The app opens with an empty club. Press **Load demo club** on the dashboard for
-a full season anchored to today — 50 paddlers spanning junior to Senior C, a
-finished regatta with results, practices in every training kind, a race
-running today with heats waiting to be advanced, a part-planned championship
-with a Plan B lineup to compare, and a qualifier on the horizon. Or import
-`sample-data/members.csv` and start from your own roster.
+a full season anchored to today — 80 paddlers spanning junior to Senior C, a
+training calendar running since New Year (water every Saturday and Sunday,
+land every Tuesday and Thursday, with sign-ups and boat lineups to report
+on), a finished regatta with results, a race running today with heats waiting
+to be advanced, a part-planned championship with a Plan B lineup to compare,
+and a qualifier on the horizon. Or import `sample-data/members.csv` and start
+from your own roster.
 
 ```bash
 npm run build    # typecheck + production build

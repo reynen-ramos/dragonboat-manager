@@ -92,7 +92,7 @@ describe('the season spans time', () => {
   });
 
   it('the roster is wide enough to explore every member-facing feature', () => {
-    expect(snap.members.length).toBeGreaterThanOrEqual(50);
+    expect(snap.members.length).toBeGreaterThanOrEqual(80);
 
     // Every status, every gender, every zone has a wearer.
     expect(new Set(snap.members.map((m) => m.status))).toEqual(
@@ -126,6 +126,44 @@ describe('the season spans time', () => {
     expect(Math.max(...years)).toBeGreaterThanOrEqual(2008);
     // And a category exists that puts the age checks to work.
     expect(snap.categories.some((c) => c.ageDivision)).toBe(true);
+  });
+
+  it('trains on the club schedule: water Sat/Sun, land Tue/Thu, since New Year', () => {
+    const seasonStart = `${TODAY.slice(0, 4)}-01-01`;
+    const series = snap.events.filter((e) => e.id.startsWith('demo-training-'));
+
+    // Roughly four sessions a week from January to late August.
+    expect(series.length).toBeGreaterThanOrEqual(100);
+    for (const session of series) {
+      expect(session.startDate >= seasonStart).toBe(true);
+      expect(session.startDate < TODAY).toBe(true);
+      const dow = new Date(`${session.startDate}T00:00:00Z`).getUTCDay();
+      if (session.trainingKind === 'water') expect([0, 6]).toContain(dow);
+      else {
+        expect(session.trainingKind).toBe('land');
+        expect([2, 4]).toContain(dow);
+      }
+    }
+    // No date trains twice — the generator skips the hand-built practices.
+    const dates = series.map((e) => e.startDate);
+    expect(new Set(dates).size).toBe(dates.length);
+    expect(dates).not.toContain(TODAY);
+  });
+
+  it('water sessions carry training boats; land sessions are sign-up only', () => {
+    const trainingCategories = snap.categories.filter((c) => c.id.startsWith('demo-training-cat-'));
+    expect(trainingCategories.length).toBeGreaterThanOrEqual(30);
+    for (const category of trainingCategories) {
+      expect(eventsById.get(category.eventId)?.trainingKind).toBe('water');
+    }
+    // And the season generated sign-ups worth reporting on.
+    const seriesAnswers = snap.availability.filter((a) => a.eventId.startsWith('demo-training-'));
+    expect(seriesAnswers.length).toBeGreaterThanOrEqual(1000);
+  });
+
+  it('stays comfortably inside a localStorage quota', () => {
+    // ~5MB is the usual browser limit; the whole demo must never crowd it.
+    expect(JSON.stringify(snap).length).toBeLessThan(2_000_000);
   });
 
   it('has races and trainings ahead, and every training kind somewhere', () => {
