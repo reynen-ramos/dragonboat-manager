@@ -13,8 +13,10 @@ import { todayIso } from '@/domain/dates';
 import { validateCrew, type Issue } from '@/domain/validation';
 import {
   useAllAssignments,
+  useAllAvailability,
   useAllCategories,
   useAllCrews,
+  useAllRaceEntries,
   useAssignments,
   useAvailability,
   useEvents,
@@ -231,6 +233,59 @@ export function useMemberHistory(memberId: string | undefined) {
     ...history,
     isLoading,
     isError,
+    refetch: () => {
+      for (const q of queries) void q.refetch();
+    },
+  };
+}
+
+/**
+ * Every collection the report builders read, fetched once and rolled up.
+ *
+ * The page memoises the builder calls; this hook only assembles the superset
+ * input object each narrow builder interface is structurally satisfied by.
+ */
+export function useReportsData() {
+  const members = useMembers();
+  const events = useEvents();
+  const categories = useAllCategories();
+  const crews = useAllCrews();
+  const assignments = useAllAssignments();
+  const availability = useAllAvailability();
+  const raceEntries = useAllRaceEntries();
+  const settings = useSettings();
+
+  const queries = [members, events, categories, crews, assignments, availability, raceEntries];
+
+  const collections = useMemo(
+    () => ({
+      members: members.data ?? [],
+      events: events.data ?? [],
+      categories: categories.data ?? [],
+      crews: crews.data ?? [],
+      assignments: assignments.data ?? [],
+      availability: availability.data ?? [],
+      raceEntries: raceEntries.data ?? [],
+      eventTypes: settings.eventTypes,
+      trainingKinds: settings.trainingKinds,
+    }),
+    [
+      members.data,
+      events.data,
+      categories.data,
+      crews.data,
+      assignments.data,
+      availability.data,
+      raceEntries.data,
+      settings.eventTypes,
+      settings.trainingKinds,
+    ],
+  );
+
+  return {
+    collections,
+    isLoading: queries.some((q) => q.isLoading),
+    isError: queries.some((q) => q.isError),
     refetch: () => {
       for (const q of queries) void q.refetch();
     },

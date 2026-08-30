@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { membersToCsv, parseCsv, parseMembersCsv } from './csv';
+import { membersToCsv, parseCsv, parseMembersCsv, rowsToCsv } from './csv';
 import type { Member } from '@/domain/types';
 
 describe('parseCsv', () => {
@@ -130,6 +130,26 @@ describe('membersToCsv', () => {
 
   it('quotes cells containing commas and quotes', () => {
     expect(membersToCsv([member])).toContain('"Prefers row 2, ""engine room"" trained"');
+  });
+});
+
+describe('rowsToCsv', () => {
+  it('writes BOM, CRLF line endings, and a header row', () => {
+    const csv = rowsToCsv(['Name', 'Count'], [['Ana', 3]]);
+    expect(csv.charCodeAt(0)).toBe(0xfeff);
+    expect(csv.slice(1)).toBe('Name,Count\r\nAna,3\r\n');
+  });
+
+  it('quotes commas, quotes, and newlines the RFC way', () => {
+    const csv = rowsToCsv(['A'], [['a, "b"\nc']]);
+    expect(csv).toContain('"a, ""b""\nc"');
+  });
+
+  it('guards formula-looking cells but leaves genuine numbers alone', () => {
+    const csv = rowsToCsv(['A', 'B'], [['=SUM(A1:A9)', -5]]);
+    expect(csv).toContain("'=SUM(A1:A9)");
+    expect(csv).toContain('-5');
+    expect(csv).not.toContain("'-5");
   });
 });
 

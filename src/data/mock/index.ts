@@ -120,6 +120,10 @@ const assignmentRepo: AssignmentRepo = {
 };
 
 const availabilityRepo: AvailabilityRepo = {
+  async listAll() {
+    return readDb().availability;
+  },
+
   async listByEvent(eventId) {
     return readDb().availability.filter((a) => a.eventId === eventId);
   },

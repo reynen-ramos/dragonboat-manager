@@ -52,6 +52,8 @@ export interface AssignmentRepo extends Repo<Assignment> {
 
 /** Availability is keyed by (eventId, memberId) rather than an id of its own. */
 export interface AvailabilityRepo {
+  /** Every answer across every event — the club-wide read reports run on. */
+  listAll(): Promise<Availability[]>;
   listByEvent(eventId: string): Promise<Availability[]>;
   listByMember(memberId: string): Promise<Availability[]>;
   set(entry: Availability): Promise<Availability>;

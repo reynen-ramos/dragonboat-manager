@@ -52,5 +52,11 @@ export function categoryName(category: Category): string {
   return parts.join(' · ');
 }
 
+/** 1 → "1st", 12 → "12th", 23 → "23rd". */
+export function ordinal(n: number): string {
+  const suffix = ['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) || n % 10 > 3 ? 0 : n % 10];
+  return `${n}${suffix}`;
+}
+
 export const pluralise = (count: number, singular: string, plural = `${singular}s`): string =>
   `${count} ${count === 1 ? singular : plural}`;
