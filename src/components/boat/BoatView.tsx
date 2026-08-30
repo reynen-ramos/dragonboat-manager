@@ -110,22 +110,23 @@ export function BoatView({
 }
 
 /**
- * The hull outline: a pointed bow at the top, tapered stern at the bottom.
+ * The hull outline: a pointed bow at the top, tapered stern at the bottom —
+ * the original quiet lens, now a narrow band down the centre spine.
  *
- * Sides tucked to 22/78 rather than the original 8/92 — the wide lens read
- * more as a pond than a boat. The cards overhang the gunwales now, which is
- * how paddlers relate to a narrow hull anyway.
+ * The band is a fixed 56px, matching the row-number column exactly at every
+ * screen width, so the numbers ride on the deck and the paddler cards sit
+ * beside the boat rather than on it.
  */
 function Hull() {
   return (
     <svg
-      className="pointer-events-none absolute inset-0 h-full w-full text-brand-600/25"
+      className="pointer-events-none absolute inset-y-0 left-1/2 h-full w-14 -translate-x-1/2 text-brand-600/25"
       viewBox="0 0 100 400"
       preserveAspectRatio="none"
       aria-hidden="true"
     >
       <path
-        d="M50 2 C 66 24, 78 56, 78 120 L78 300 C78 350, 68 380, 50 398 C32 380, 22 350, 22 300 L22 120 C22 56, 34 24, 50 2 Z"
+        d="M50 2 C 74 26, 92 60, 92 120 L92 300 C92 352, 76 382, 50 398 C24 382, 8 352, 8 300 L8 120 C8 60, 26 26, 50 2 Z"
         fill="currentColor"
         fillOpacity="0.18"
         stroke="currentColor"
@@ -166,15 +167,18 @@ function BoatRow({
   return (
     <div className="relative">
       {showZoneLabel && (
-        <p className="mb-1 mt-2 text-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
-          {ZONE_LABELS[zone]}
+        <p className="mb-1 mt-2 flex justify-center text-[0.6rem] font-semibold uppercase tracking-widest text-muted">
+          {/* A solid pill, or the hull behind strikes through the label. */}
+          <span className="surface rounded-full border border-subtle px-2 py-0.5">
+            {ZONE_LABELS[zone]}
+          </span>
         </p>
       )}
       <div className="flex items-stretch gap-1.5">
         {(['left', 'right'] as Side[]).map((side, index) => (
           <div key={side} className="flex flex-1 items-center gap-1.5">
             {index === 1 && (
-              <span className="tabular w-4 shrink-0 text-center text-[0.65rem] font-medium text-muted">
+              <span className="tabular w-14 shrink-0 text-center text-[0.65rem] font-medium text-muted">
                 {row}
               </span>
             )}
