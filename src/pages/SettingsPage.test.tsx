@@ -58,6 +58,35 @@ describe('SettingsPage event types', () => {
     });
   });
 
+  it('re-bases and deletes the defaults like any other type', async () => {
+    renderSettings();
+    await screen.findByText('Event types');
+
+    // The seeded 'Other' is no more protected than a custom type.
+    await userEvent.selectOptions(screen.getByLabelText('Behaviour of Other'), 'race');
+    await waitFor(async () => {
+      const settings = await mockAdapter.settings.get();
+      expect(settings.eventTypes).toContainEqual({ id: 'other', label: 'Other', base: 'race' });
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Practice' }));
+    await waitFor(async () => {
+      const settings = await mockAdapter.settings.get();
+      expect(settings.eventTypes.map((t) => t.id)).not.toContain('practice');
+    });
+  });
+
+  it('never deletes the last remaining type', async () => {
+    await mockAdapter.settings.save({
+      ...DEFAULT_CLUB_SETTINGS,
+      eventTypes: [{ id: 'race', label: 'Race / regatta', base: 'race' }],
+    });
+    renderSettings();
+    await screen.findByText('Event types');
+
+    expect(screen.getByRole('button', { name: 'Delete Race / regatta' })).toBeDisabled();
+  });
+
   it('refuses to delete a type or kind that events still wear', async () => {
     await mockAdapter.settings.save({
       ...DEFAULT_CLUB_SETTINGS,
@@ -84,8 +113,10 @@ describe('SettingsPage event types', () => {
     await waitFor(() => expect(screen.getAllByText('1 event')).toHaveLength(3));
 
     expect(screen.getByRole('button', { name: 'Delete Social' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete Practice' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete Water training' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Delete Land training' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Delete Race / regatta' })).toBeEnabled();
   });
 
   it('deletes an unused training kind', async () => {

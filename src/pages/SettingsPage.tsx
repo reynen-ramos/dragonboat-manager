@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { NumberField } from '@/components/ui/NumberField';
 import { Input, Select } from '@/components/ui/Field';
-import { Badge, Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
+import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { formatDate } from '@/domain/dates';
-import { BUILTIN_EVENT_TYPES, slugId } from '@/domain/eventTypes';
+import { slugId } from '@/domain/eventTypes';
 import type { BoatSize, EventBase, Snapshot } from '@/domain/types';
 import {
   UnreadableSnapshotError,
@@ -198,13 +198,15 @@ const BASE_LABEL: Record<EventBase, string> = {
 };
 
 /**
- * The club's own event types.
+ * The club's own event types — the defaults included: every type, seeded or
+ * added, can be renamed, re-based, and deleted alike.
  *
  * Events store only the type's id, so renaming here renames every event at
  * once. The behaviour ("behaves like") is what the app actually branches on —
- * race day, history counts, dashboard grouping, calendar colour — and stays
- * locked on the built-ins so the three defaults can't be bent into nonsense.
- * A type in use cannot be deleted: the events wearing it would be orphaned.
+ * race day, history counts, dashboard grouping, calendar colour. The only
+ * guards are data integrity, not pedigree: a type in use cannot be deleted
+ * (the events wearing it would be orphaned), and neither can the last type
+ * (the event form would have nothing to offer).
  */
 function EventTypesCard() {
   const settings = useSettings();
@@ -214,7 +216,6 @@ function EventTypesCard() {
   const [newBase, setNewBase] = useState<EventBase>('other');
 
   const usage = (typeId: string) => (events.data ?? []).filter((e) => e.type === typeId).length;
-  const isBuiltin = (id: string) => BUILTIN_EVENT_TYPES.some((t) => t.id === id);
 
   const save = (eventTypes: typeof settings.eventTypes) =>
     saveSettings.mutate({ ...settings, eventTypes });
@@ -243,8 +244,9 @@ function EventTypesCard() {
     <Card className="p-5">
       <h2 className="font-semibold">Event types</h2>
       <p className="mt-1 text-sm text-muted">
-        Rename the built-ins or add your own — a time trial, a team building day. Each type behaves
-        like a race, a training, or neither; that drives race day, the dashboard, and the calendar.
+        Every type — the defaults included — can be renamed, re-based, or deleted, and you can add
+        your own: a time trial, a team building day. Each type behaves like a race, a training, or
+        neither; that drives race day, the dashboard, and the calendar.
       </p>
 
       <ul className="mt-4 flex flex-col gap-2">
@@ -264,35 +266,35 @@ function EventTypesCard() {
                   }
                 }}
               />
-              {isBuiltin(type.id) ? (
-                <Badge>Behaves like: {BASE_LABEL[type.base]}</Badge>
-              ) : (
-                <Select
-                  className="h-9 w-auto text-sm"
-                  aria-label={`Behaviour of ${type.label}`}
-                  value={type.base}
-                  onChange={(e) => setBase(type.id, e.target.value as EventBase)}
-                >
-                  {(Object.keys(BASE_LABEL) as EventBase[]).map((base) => (
-                    <option key={base} value={base}>
-                      Behaves like: {BASE_LABEL[base]}
-                    </option>
-                  ))}
-                </Select>
-              )}
+              <Select
+                className="h-9 w-auto text-sm"
+                aria-label={`Behaviour of ${type.label}`}
+                value={type.base}
+                onChange={(e) => setBase(type.id, e.target.value as EventBase)}
+              >
+                {(Object.keys(BASE_LABEL) as EventBase[]).map((base) => (
+                  <option key={base} value={base}>
+                    Behaves like: {BASE_LABEL[base]}
+                  </option>
+                ))}
+              </Select>
               {used > 0 && <span className="text-xs text-muted">{pluralise(used, 'event')}</span>}
-              {!isBuiltin(type.id) && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Delete ${type.label}`}
-                  disabled={used > 0}
-                  title={used > 0 ? 'In use — retype those events first.' : undefined}
-                  onClick={() => save(settings.eventTypes.filter((t) => t.id !== type.id))}
-                >
-                  <Trash2 />
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Delete ${type.label}`}
+                disabled={used > 0 || settings.eventTypes.length === 1}
+                title={
+                  used > 0
+                    ? 'In use — retype those events first.'
+                    : settings.eventTypes.length === 1
+                      ? 'The last type — events need at least one.'
+                      : undefined
+                }
+                onClick={() => save(settings.eventTypes.filter((t) => t.id !== type.id))}
+              >
+                <Trash2 />
+              </Button>
             </li>
           );
         })}
