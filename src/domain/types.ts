@@ -36,7 +36,7 @@ export type AvailabilityStatus = 'in' | 'out' | 'maybe';
 
 export type RaceStage = 'heat' | 'semi' | 'final';
 
-export type EventType = 'race' | 'practice';
+export type EventType = 'race' | 'practice' | 'other';
 
 /** A physical seat position in the boat. Rows run bow (1) to stern (N). */
 export interface SeatPosition {

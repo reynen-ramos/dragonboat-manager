@@ -97,6 +97,7 @@ const PRACTICE_2 = 'demo-event-practice-2';
 const TODAY_RACE = 'demo-event-today';
 const UPCOMING = 'demo-event-upcoming';
 const FUTURE = 'demo-event-future';
+const SOCIAL = 'demo-event-social';
 
 const CAT_PAST_OPEN10 = 'demo-cat-past-open10';
 const CAT_PAST_MIXED20 = 'demo-cat-past-mixed20';
@@ -364,6 +365,15 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
       startDate: shiftDate(today, 60),
       location: 'Boracay',
       type: 'race',
+    },
+    // One 'other' event so the calendar demonstrates all three colours.
+    {
+      id: SOCIAL,
+      name: 'Clubhouse Fundraiser',
+      startDate: shiftDate(today, 9),
+      location: 'Boathouse',
+      type: 'other',
+      notes: 'Raising for the new 10s hull. Bring somebody who has never paddled.',
     },
   ];
 
