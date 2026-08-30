@@ -2,15 +2,25 @@ import { Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Field';
+import { Input, Select } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
-import { formatDate } from '@/domain/dates';
-import type { Availability, AvailabilityStatus, Member } from '@/domain/types';
+import { ageOn, formatDate, todayIso } from '@/domain/dates';
+import type { Availability, AvailabilityStatus, Gender, Member, SidePreference } from '@/domain/types';
 import { useAvailability, useEvent, useMembers, useSetAvailability } from '@/queries/hooks';
 import { BackLink } from '@/components/ui/BackLink';
 import { RadioCards } from '@/components/ui/RadioCards';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { fullName, initials, pluralise, SIDE_MARK } from '@/utils/format';
+import { compareMembers, type MemberSortKey } from '@/utils/memberSort';
+import {
+  formatWeight,
+  fullName,
+  GENDER_LABEL,
+  GENDER_MARK,
+  initials,
+  pluralise,
+  SIDE_MARK,
+  SIDE_PREFERENCE_LABEL,
+} from '@/utils/format';
 
 /**
  * The event's sign-up sheet: who is In, Maybe, or Out.
@@ -35,6 +45,9 @@ export function SignupsPage() {
   const availability = useAvailability(eventId);
   const setAvailability = useSetAvailability();
   const [search, setSearch] = useState('');
+  const [gender, setGender] = useState<Gender | 'all'>('all');
+  const [side, setSide] = useState<SidePreference | 'all'>('all');
+  const [sort, setSort] = useState<MemberSortKey>('name');
 
   const byMember = useMemo(
     () => new Map((availability.data ?? []).map((a) => [a.memberId, a])),
@@ -49,9 +62,11 @@ export function SignupsPage() {
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return active
+      .filter((m) => (gender === 'all' ? true : m.gender === gender))
+      .filter((m) => (side === 'all' ? true : m.sidePreference === side))
       .filter((m) => (query ? fullName(m).toLowerCase().includes(query) : true))
-      .sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  }, [active, search]);
+      .sort(compareMembers(sort));
+  }, [active, search, gender, side, sort]);
 
   if (event.isLoading || members.isLoading || availability.isLoading) return <Spinner />;
   if (event.isError || members.isError || availability.isError) {
@@ -125,13 +140,47 @@ export function SignupsPage() {
             </Card>
           )}
 
-          <SearchInput
-            className="mb-3"
-            placeholder="Search by name"
-            aria-label="Search members"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="mb-3 flex flex-wrap gap-2">
+            <SearchInput
+              className="min-w-48 flex-1"
+              placeholder="Search by name"
+              aria-label="Search members"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Select
+              className="w-auto"
+              value={gender}
+              onChange={(e) => setGender(e.target.value as Gender | 'all')}
+              aria-label="Filter by gender"
+            >
+              <option value="all">Any gender</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
+            </Select>
+            <Select
+              className="w-auto"
+              value={side}
+              onChange={(e) => setSide(e.target.value as SidePreference | 'all')}
+              aria-label="Filter by paddling side"
+            >
+              <option value="all">Any side</option>
+              <option value="left">Left only</option>
+              <option value="right">Right only</option>
+              <option value="both">Either side</option>
+            </Select>
+            <Select
+              className="w-auto"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as MemberSortKey)}
+              aria-label="Sort members"
+            >
+              <option value="name">Sort by name</option>
+              <option value="weight">Sort by weight</option>
+              <option value="side">Sort by side</option>
+            </Select>
+          </div>
 
           {visible.length === 0 ? (
             <EmptyState title="Nobody matches that search" />
@@ -187,6 +236,13 @@ function AvailabilityRow({
 }) {
   const [draftNote, setDraftNote] = useState(note ?? '');
   const [editingNote, setEditingNote] = useState(false);
+  const age = member.dateOfBirth ? ageOn(member.dateOfBirth, todayIso()) : undefined;
+  const stats = [
+    member.weightKg != null ? formatWeight(member.weightKg) : null,
+    age != null ? `${age}y` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   // Adopt an external note change while the field is not being edited.
   useEffect(() => {
@@ -228,8 +284,16 @@ function AvailabilityRow({
         )}
       </div>
 
+      {stats && (
+        <span className="tabular hidden shrink-0 text-sm text-muted sm:block">{stats}</span>
+      )}
+      <Badge tone="neutral">
+        <span aria-hidden="true">{GENDER_MARK[member.gender]}</span>
+        <span className="sr-only">{GENDER_LABEL[member.gender]}</span>
+      </Badge>
       <Badge tone={member.sidePreference === 'both' ? 'neutral' : 'brand'}>
-        {SIDE_MARK[member.sidePreference]}
+        <span aria-hidden="true">{SIDE_MARK[member.sidePreference]}</span>
+        <span className="sr-only">{SIDE_PREFERENCE_LABEL[member.sidePreference]}</span>
       </Badge>
 
       <RadioCards
