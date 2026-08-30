@@ -9,7 +9,6 @@ import type {
   PaddlerAssignment,
   SeatPosition,
   SeatZone,
-  Side,
 } from '@/domain/types';
 import { cn } from '@/utils/cn';
 import { fullName } from '@/utils/format';
@@ -174,23 +173,30 @@ function BoatRow({
           </span>
         </p>
       )}
-      <div className="flex items-stretch gap-1.5">
-        {(['left', 'right'] as Side[]).map((side, index) => (
-          <div key={side} className="flex flex-1 items-center gap-1.5">
-            {index === 1 && (
-              <span className="tabular w-14 shrink-0 text-center text-[0.65rem] font-medium text-muted">
-                {row}
-              </span>
-            )}
-            <Seat
-              seat={{ row, side }}
-              occupant={occupantAt({ row, side })}
-              onTogglePin={onTogglePin}
-              highlighted={highlighted}
-              onTap={onSeatTap}
-            />
-          </div>
-        ))}
+      {/*
+        The number is its own column between two equal seats. Nesting it
+        inside the right side's wrapper made the right card pay its width —
+        the two sides were never quite the same size, and widening the cell
+        for the hull made the imbalance obvious.
+      */}
+      <div className="flex items-center gap-1.5">
+        <Seat
+          seat={{ row, side: 'left' }}
+          occupant={occupantAt({ row, side: 'left' })}
+          onTogglePin={onTogglePin}
+          highlighted={highlighted}
+          onTap={onSeatTap}
+        />
+        <span className="tabular w-14 shrink-0 text-center text-[0.65rem] font-medium text-muted">
+          {row}
+        </span>
+        <Seat
+          seat={{ row, side: 'right' }}
+          occupant={occupantAt({ row, side: 'right' })}
+          onTogglePin={onTogglePin}
+          highlighted={highlighted}
+          onTap={onSeatTap}
+        />
       </div>
     </div>
   );
