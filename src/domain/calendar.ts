@@ -1,0 +1,82 @@
+/**
+ * Month-grid arithmetic for the events calendar.
+ *
+ * All arithmetic is UTC-pinned, matching the rest of this codebase's treatment
+ * of stored `YYYY-MM-DD` strings: a written-down date must render as the same
+ * square in every timezone. Weeks start on Monday.
+ */
+
+export interface MonthRef {
+  year: number;
+  /** 1-12, matching how humans (and ISO strings) count months. */
+  month: number;
+}
+
+const isoOf = (d: Date): string => d.toISOString().slice(0, 10);
+
+/** The month a stored ISO date falls in. */
+export function monthOf(iso: string): MonthRef {
+  return { year: Number(iso.slice(0, 4)), month: Number(iso.slice(5, 7)) };
+}
+
+export function addMonths({ year, month }: MonthRef, delta: number): MonthRef {
+  // Zero-based arithmetic so the year carries correctly in both directions.
+  const total = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(total / 12), month: (((total % 12) + 12) % 12) + 1 };
+}
+
+export function sameMonth(a: MonthRef, b: MonthRef): boolean {
+  return a.year === b.year && a.month === b.month;
+}
+
+/** "September 2026" - for the calendar header. */
+export function monthLabel({ year, month }: MonthRef): string {
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** True when the ISO date falls inside the given month (not a spill-over day). */
+export function inMonth(iso: string, ref: MonthRef): boolean {
+  return sameMonth(monthOf(iso), ref);
+}
+
+export function dayNumber(iso: string): number {
+  return Number(iso.slice(8, 10));
+}
+
+/**
+ * The month as full Monday-to-Sunday weeks of ISO dates.
+ *
+ * Leading and trailing days spill into the neighbouring months on purpose:
+ * a regatta on the 1st should be visible while August is still on screen.
+ */
+export function monthGrid({ year, month }: MonthRef): string[][] {
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const lead = (first.getUTCDay() + 6) % 7; // getUTCDay: 0 = Sunday
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const total = Math.ceil((lead + daysInMonth) / 7) * 7;
+
+  const weeks: string[][] = [];
+  for (let offset = 0; offset < total; offset += 7) {
+    weeks.push(
+      Array.from({ length: 7 }, (_, day) =>
+        isoOf(new Date(Date.UTC(year, month - 1, 1 - lead + offset + day))),
+      ),
+    );
+  }
+  return weeks;
+}
+
+/**
+ * Whether an event covers a given day. `endDate` is inclusive - a two-day
+ * regatta occupies both squares. Plain string comparison is exact for ISO.
+ */
+export function occursOn(
+  event: { startDate: string; endDate?: string },
+  iso: string,
+): boolean {
+  return event.startDate <= iso && iso <= (event.endDate ?? event.startDate);
+}

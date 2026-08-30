@@ -85,6 +85,11 @@ describe('the season spans time', () => {
     expect(snap.events.filter((e) => e.startDate === TODAY)).toHaveLength(1);
     expect(snap.events.some((e) => e.type === 'practice' && e.startDate < TODAY)).toBe(true);
   });
+
+  it('covers all three event kinds, so the calendar shows every colour', () => {
+    const kinds = new Set(snap.events.map((e) => e.type));
+    expect(kinds).toEqual(new Set(['race', 'practice', 'other']));
+  });
 });
 
 describe('each feature has something to show', () => {

@@ -11,14 +11,17 @@ type Draft = Omit<ClubEvent, 'id'>;
 export function EventForm({
   event,
   open,
+  initialDate,
   onOpenChange,
 }: {
   event?: ClubEvent;
   open: boolean;
+  /** Pre-fills the start date — the calendar passes the day that was tapped. */
+  initialDate?: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(
-    () => event ?? { name: '', startDate: todayIso(), type: 'race' },
+    () => event ?? { name: '', startDate: initialDate ?? todayIso(), type: 'race' },
   );
   const [error, setError] = useState<string>();
   const create = useCreateEvent();
@@ -82,6 +85,7 @@ export function EventForm({
               >
                 <option value="race">Race / regatta</option>
                 <option value="practice">Practice</option>
+                <option value="other">Other</option>
               </Select>
             )}
           </Field>

@@ -219,7 +219,7 @@ function HistoryRow({ row }: { row: MemberHistoryRow }) {
         <p className="truncate font-medium">{event.name}</p>
         <p className="truncate text-sm text-muted">
           {formatDate(event.startDate)}
-          {event.type === 'practice' ? ' · practice' : ''}
+          {event.type !== 'race' ? ` · ${event.type}` : ''}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-1.5">

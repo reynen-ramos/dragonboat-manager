@@ -2,16 +2,23 @@ import { CalendarDays, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EventForm } from '@/components/events/EventForm';
+import { EventsCalendar } from '@/components/events/EventsCalendar';
 import { Button } from '@/components/ui/Button';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
+import { RadioCards } from '@/components/ui/RadioCards';
 import { formatDate, todayIso } from '@/domain/dates';
 import type { ClubEvent } from '@/domain/types';
 import { useCategories, useEvents } from '@/queries/hooks';
 import { categoryName, pluralise } from '@/utils/format';
 
+type View = 'list' | 'calendar';
+
 export function EventsPage() {
   const events = useEvents();
-  const [creating, setCreating] = useState(false);
+  const [view, setView] = useState<View>('list');
+  // `false` = closed; otherwise the form is open, optionally pre-dated by the
+  // calendar day that was tapped.
+  const [creating, setCreating] = useState<false | { startDate?: string }>(false);
 
   if (events.isLoading) return <Spinner />;
   if (events.isError) {
@@ -32,7 +39,7 @@ export function EventsPage() {
       <PageHeader
         title="Events"
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
+          <Button variant="primary" onClick={() => setCreating({})}>
             <Plus /> New event
           </Button>
         }
@@ -44,19 +51,44 @@ export function EventsPage() {
           title="No events yet"
           description="Create a regatta or a practice, then add the categories you are entering."
           action={
-            <Button variant="primary" onClick={() => setCreating(true)}>
+            <Button variant="primary" onClick={() => setCreating({})}>
               <Plus /> New event
             </Button>
           }
         />
       ) : (
-        <div className="flex flex-col gap-8">
-          {upcoming.length > 0 && <EventGroup title="Upcoming" events={upcoming} />}
-          {past.length > 0 && <EventGroup title="Past" events={past} />}
+        <div className="flex flex-col gap-4">
+          <RadioCards<View>
+            label="Events view"
+            className="flex w-fit gap-1 rounded-lg surface-sunken p-1"
+            optionClassName="rounded-md px-3 py-1.5 text-sm font-medium text-muted transition-colors"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'list', label: 'List', selectedClassName: 'surface text-[inherit] shadow-sm' },
+              { value: 'calendar', label: 'Calendar', selectedClassName: 'surface text-[inherit] shadow-sm' },
+            ]}
+            renderOption={(option) => option.label}
+          />
+
+          {view === 'calendar' ? (
+            <EventsCalendar events={all} onPickDay={(iso) => setCreating({ startDate: iso })} />
+          ) : (
+            <div className="flex flex-col gap-8">
+              {upcoming.length > 0 && <EventGroup title="Upcoming" events={upcoming} />}
+              {past.length > 0 && <EventGroup title="Past" events={past} />}
+            </div>
+          )}
         </div>
       )}
 
-      {creating && <EventForm open onOpenChange={(open) => !open && setCreating(false)} />}
+      {creating && (
+        <EventForm
+          open
+          initialDate={creating.startDate}
+          onOpenChange={(open) => !open && setCreating(false)}
+        />
+      )}
     </>
   );
 }
@@ -85,6 +117,7 @@ function EventCard({ event }: { event: ClubEvent }) {
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{event.name}</p>
             {event.type === 'practice' && <Badge>Practice</Badge>}
+            {event.type === 'other' && <Badge tone="warn">Other</Badge>}
           </div>
           <p className="mt-0.5 text-sm text-muted">
             {formatDate(event.startDate)}
