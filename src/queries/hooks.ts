@@ -218,6 +218,17 @@ export const useCreateEvent = () =>
     keys.events.all,
   ]);
 
+/** One mutation for a whole recurring series — a single invalidation round. */
+export const useCreateEvents = () =>
+  useInvalidatingMutation(
+    async (inputs: Omit<ClubEvent, 'id'>[]) => {
+      const created: ClubEvent[] = [];
+      for (const input of inputs) created.push(await adapter.events.create(input));
+      return created;
+    },
+    [keys.events.all],
+  );
+
 export const useUpdateEvent = () =>
   useInvalidatingMutation(
     ({ id, patch }: { id: string; patch: Partial<Omit<ClubEvent, 'id'>> }) =>

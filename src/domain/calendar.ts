@@ -62,6 +62,25 @@ export function addDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** 0 = Sunday … 6 = Saturday, matching getUTCDay. */
+export function dayOfWeek(iso: string): number {
+  return new Date(`${iso}T00:00:00Z`).getUTCDay();
+}
+
+/**
+ * Every date in [start, until] (both inclusive) falling on one of the given
+ * weekdays. The building block for "repeats weekly" — a series is nothing
+ * more than its dates, materialised.
+ */
+export function weeklyDates(start: string, until: string, weekdays: readonly number[]): string[] {
+  const wanted = new Set(weekdays);
+  const dates: string[] = [];
+  for (let d = start; d <= until; d = addDays(d, 1)) {
+    if (wanted.has(dayOfWeek(d))) dates.push(d);
+  }
+  return dates;
+}
+
 /**
  * The month as full Monday-to-Sunday weeks of ISO dates.
  *
