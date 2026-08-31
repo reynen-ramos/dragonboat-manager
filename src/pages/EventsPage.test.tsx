@@ -1,6 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { invalidateCache } from '@/data/mock/db';
@@ -35,48 +34,44 @@ const renderPage = () => {
   );
 };
 
-describe('EventsPage past list', () => {
-  it('groups the past by month, races visible, trainings folded away', async () => {
+describe('EventsPage', () => {
+  it('lists races and one-offs by month — trainings live in their own section', async () => {
     await seed({ name: 'Spring Regatta', startDate: shift(-20) });
     await seed({ name: 'Old Water Session', startDate: shift(-18), type: 'practice' });
+    await seed({ name: 'Next Water Session', startDate: shift(3), type: 'practice' });
     await seed({ name: 'Nationals Ahead', startDate: shift(10) });
 
     renderPage();
 
-    // The race stays on the page; the training hides behind its month toggle.
     expect(await screen.findByText('Spring Regatta')).toBeInTheDocument();
     expect(screen.getByText('Nationals Ahead')).toBeInTheDocument();
-    expect(screen.queryByText('Old Water Session')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: monthLabel(monthOf(shift(-18))) }),
+      screen.getByRole('heading', { name: monthLabel(monthOf(shift(-20))) }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show 1 training' }));
-    expect(screen.getByText('Old Water Session')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Hide trainings' }));
+    // No trainings anywhere — not upcoming, not past, not behind a toggle.
     expect(screen.queryByText('Old Water Session')).not.toBeInTheDocument();
+    expect(screen.queryByText('Next Water Session')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Show .* training/ })).not.toBeInTheDocument();
   });
 
-  it('folds custom practice-base types too, by their behaviour', async () => {
+  it('excludes custom practice-base types by behaviour, keeping other one-offs', async () => {
     await mockAdapter.settings.save({
       ...(await mockAdapter.settings.get()),
       eventTypes: [
         { id: 'race', label: 'Race / regatta', base: 'race' },
-        { id: 'practice', label: 'Practice', base: 'practice' },
         { id: 'gym', label: 'Gym Session', base: 'practice' },
         { id: 'other', label: 'Other', base: 'other' },
       ],
     });
     await seed({ name: 'Old Gym Night', startDate: shift(-15), type: 'gym' });
     await seed({ name: 'Old Fundraiser', startDate: shift(-15), type: 'other' });
+    await seed({ name: 'Spring Regatta', startDate: shift(-40) });
 
     renderPage();
 
-    // The toggle appears only once settings resolve and the custom type is
-    // recognised as practice-base — wait on it before asserting the fold.
-    expect(await screen.findByRole('button', { name: 'Show 1 training' })).toBeInTheDocument();
-    expect(screen.getByText('Old Fundraiser')).toBeInTheDocument();
+    expect(await screen.findByText('Old Fundraiser')).toBeInTheDocument();
+    expect(screen.getByText('Spring Regatta')).toBeInTheDocument();
     expect(screen.queryByText('Old Gym Night')).not.toBeInTheDocument();
   });
 });

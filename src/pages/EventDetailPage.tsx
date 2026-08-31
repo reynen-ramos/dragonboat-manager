@@ -55,7 +55,12 @@ export function EventDetailPage() {
 
   return (
     <>
-      <BackLink to="/events">All events</BackLink>
+      {/* An event belongs to whichever section lists it. */}
+      {eventBase(event.data.type, settings.eventTypes) === 'practice' ? (
+        <BackLink to="/trainings">Trainings</BackLink>
+      ) : (
+        <BackLink to="/events">All events</BackLink>
+      )}
 
       <PageHeader
         title={event.data.name}
