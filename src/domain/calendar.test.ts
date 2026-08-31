@@ -9,6 +9,7 @@ import {
   monthOf,
   occursOn,
   startOfWeek,
+  weeklyDates,
 } from './calendar';
 
 describe('monthGrid', () => {
@@ -63,6 +64,18 @@ describe('month arithmetic', () => {
   it('adds days across month ends', () => {
     expect(addDays('2026-08-30', 7)).toBe('2026-09-06');
     expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
+  });
+
+  it('materialises a weekly series, both bounds inclusive', () => {
+    // 2026-09-05 is a Saturday; ask for Sat+Sun over two weekends.
+    expect(weeklyDates('2026-09-05', '2026-09-13', [6, 0])).toEqual([
+      '2026-09-05',
+      '2026-09-06',
+      '2026-09-12',
+      '2026-09-13',
+    ]);
+    expect(weeklyDates('2026-09-05', '2026-09-04', [6])).toEqual([]);
+    expect(weeklyDates('2026-09-05', '2026-09-05', [6])).toEqual(['2026-09-05']);
   });
 
   it('labels every month distinctly with its year', () => {

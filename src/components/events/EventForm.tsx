@@ -1,11 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogClose, DialogContent } from '@/components/ui/Dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { addDays, dayOfWeek, weeklyDates } from '@/domain/calendar';
 import { todayIso } from '@/domain/dates';
 import { eventBase } from '@/domain/eventTypes';
 import type { ClubEvent } from '@/domain/types';
-import { useCreateEvent, useSettings, useUpdateEvent } from '@/queries/hooks';
+import { useCreateEvent, useCreateEvents, useEvents, useSettings, useUpdateEvent } from '@/queries/hooks';
+import { cn } from '@/utils/cn';
+import { pluralise } from '@/utils/format';
+
+/** Monday-first, the order the training week is planned in. */
+const WEEKDAY_OPTIONS = [
+  { dow: 1, short: 'Mon', full: 'Monday' },
+  { dow: 2, short: 'Tue', full: 'Tuesday' },
+  { dow: 3, short: 'Wed', full: 'Wednesday' },
+  { dow: 4, short: 'Thu', full: 'Thursday' },
+  { dow: 5, short: 'Fri', full: 'Friday' },
+  { dow: 6, short: 'Sat', full: 'Saturday' },
+  { dow: 0, short: 'Sun', full: 'Sunday' },
+];
 
 type Draft = Omit<ClubEvent, 'id'>;
 
@@ -36,17 +50,74 @@ export function EventForm({
       },
   );
   const [error, setError] = useState<string>();
+  const [repeat, setRepeat] = useState<'none' | 'weekly'>('none');
+  const [repeatDays, setRepeatDays] = useState<number[]>(() => [
+    dayOfWeek(initialDate ?? todayIso()),
+  ]);
+  const [until, setUntil] = useState(() => addDays(initialDate ?? todayIso(), 56));
   const create = useCreateEvent();
+  const createMany = useCreateEvents();
   const update = useUpdateEvent();
+  const events = useEvents();
 
   const base = eventBase(draft.type, settings.eventTypes);
+  // Only a new practice-like event can become a series — races don't recur,
+  // and editing one session of a series edits that session alone.
+  const canRepeat = !event && base === 'practice';
+  const recurring = canRepeat && repeat === 'weekly';
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
+  // The series, minus dates already holding a session of the same name — so
+  // re-running "Water Training until November" never doubles a Saturday.
+  const planned = useMemo(() => {
+    if (!recurring || repeatDays.length === 0 || until < draft.startDate) {
+      return { dates: [] as string[], skipped: 0 };
+    }
+    const name = draft.name.trim();
+    const taken = new Set(
+      (events.data ?? []).filter((e) => e.name === name).map((e) => e.startDate),
+    );
+    const all = weeklyDates(draft.startDate, until, repeatDays);
+    const dates = all.filter((d) => !taken.has(d));
+    return { dates, skipped: all.length - dates.length };
+  }, [recurring, repeatDays, until, draft.startDate, draft.name, events.data]);
+
   const submit = async () => {
     if (!draft.name.trim()) {
       setError('Give the event a name.');
+      return;
+    }
+    if (recurring) {
+      if (repeatDays.length === 0) {
+        setError('Pick at least one weekday.');
+        return;
+      }
+      if (until < draft.startDate) {
+        setError('The series ends before it starts.');
+        return;
+      }
+      if (until > addDays(draft.startDate, 366)) {
+        setError('Keep the series within a year.');
+        return;
+      }
+      if (planned.dates.length === 0) {
+        setError('Every date in that series is already scheduled.');
+        return;
+      }
+      setError(undefined);
+      // A repeating session is a single day by definition — no endDate.
+      const { endDate: _dropped, ...template } = draft;
+      void _dropped;
+      await createMany.mutateAsync(
+        planned.dates.map((startDate) => ({
+          ...template,
+          name: template.name.trim(),
+          startDate,
+        })),
+      );
+      onOpenChange(false);
       return;
     }
     if (draft.endDate && draft.endDate < draft.startDate) {
@@ -66,7 +137,7 @@ export function EventForm({
     onOpenChange(false);
   };
 
-  const pending = create.isPending || update.isPending;
+  const pending = create.isPending || createMany.isPending || update.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -78,7 +149,11 @@ export function EventForm({
               <Button>Cancel</Button>
             </DialogClose>
             <Button variant="primary" onClick={submit} disabled={pending}>
-              {pending ? 'Saving…' : 'Save'}
+              {pending
+                ? 'Saving…'
+                : recurring && planned.dates.length > 0
+                  ? `Create ${pluralise(planned.dates.length, 'session')}`
+                  : 'Save'}
             </Button>
           </>
         }
@@ -132,6 +207,21 @@ export function EventForm({
             </Field>
           )}
 
+          {canRepeat && (
+            <Field label="Repeats">
+              {(id) => (
+                <Select
+                  id={id}
+                  value={repeat}
+                  onChange={(e) => setRepeat(e.target.value as 'none' | 'weekly')}
+                >
+                  <option value="none">Does not repeat</option>
+                  <option value="weekly">Weekly, on chosen days</option>
+                </Select>
+              )}
+            </Field>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="Start date">
               {(id) => (
@@ -143,17 +233,69 @@ export function EventForm({
                 />
               )}
             </Field>
-            <Field label="End date" hint="Optional">
-              {(id) => (
-                <Input
-                  id={id}
-                  type="date"
-                  value={draft.endDate ?? ''}
-                  onChange={(e) => set('endDate', e.target.value || undefined)}
-                />
-              )}
-            </Field>
+            {recurring ? (
+              <Field label="Until">
+                {(id) => (
+                  <Input
+                    id={id}
+                    type="date"
+                    value={until}
+                    onChange={(e) => setUntil(e.target.value)}
+                  />
+                )}
+              </Field>
+            ) : (
+              <Field label="End date" hint="Optional">
+                {(id) => (
+                  <Input
+                    id={id}
+                    type="date"
+                    value={draft.endDate ?? ''}
+                    onChange={(e) => set('endDate', e.target.value || undefined)}
+                  />
+                )}
+              </Field>
+            )}
           </div>
+
+          {recurring && (
+            <div>
+              <span className="text-sm font-medium text-muted">Repeats on</span>
+              <div role="group" aria-label="Repeats on" className="mt-1.5 flex flex-wrap gap-1.5">
+                {WEEKDAY_OPTIONS.map(({ dow, short, full }) => {
+                  const selected = repeatDays.includes(dow);
+                  return (
+                    <button
+                      key={dow}
+                      type="button"
+                      aria-pressed={selected}
+                      aria-label={full}
+                      onClick={() =>
+                        setRepeatDays((prev) =>
+                          selected ? prev.filter((d) => d !== dow) : [...prev, dow],
+                        )
+                      }
+                      className={cn(
+                        'h-9 w-11 rounded-lg border text-xs font-medium transition-colors',
+                        selected
+                          ? 'border-transparent bg-brand-600 text-white'
+                          : 'border-subtle hover:surface-sunken',
+                      )}
+                    >
+                      {short}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                {planned.dates.length === 0
+                  ? 'No sessions in that range yet.'
+                  : `Creates ${pluralise(planned.dates.length, 'session')}.`}
+                {planned.skipped > 0 &&
+                  ` ${pluralise(planned.skipped, 'date')} already scheduled — skipped.`}
+              </p>
+            </div>
+          )}
 
           <Field label="Location">
             {(id) => (
