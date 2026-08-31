@@ -13,12 +13,15 @@ export function EventForm({
   event,
   open,
   initialDate,
+  initialType,
   onOpenChange,
 }: {
   event?: ClubEvent;
   open: boolean;
   /** Pre-fills the start date — the calendar passes the day that was tapped. */
   initialDate?: string;
+  /** Pre-selects a type — the Trainings section passes a practice-like one. */
+  initialType?: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const settings = useSettings();
@@ -29,7 +32,7 @@ export function EventForm({
         startDate: initialDate ?? todayIso(),
         // The club can have renamed or replaced the built-ins; default to
         // whatever heads its own list.
-        type: settings.eventTypes[0]?.id ?? 'race',
+        type: initialType ?? settings.eventTypes[0]?.id ?? 'race',
       },
   );
   const [error, setError] = useState<string>();

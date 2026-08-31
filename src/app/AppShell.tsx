@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Settings, Users } from 'lucide-react';
 import { Suspense, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Spinner } from '@/components/ui/misc';
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/members', label: 'Members', icon: Users, end: false },
   { to: '/events', label: 'Events', icon: CalendarDays, end: false },
+  { to: '/trainings', label: 'Trainings', icon: Dumbbell, end: true },
   { to: '/reports', label: 'Reports', icon: BarChart3, end: true },
   { to: '/settings', label: 'Settings', icon: Settings, end: true },
 ];

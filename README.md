@@ -23,10 +23,13 @@ seating is legal and balanced. That is what this is for.
   race, a training, or neither, and that drives everything downstream.
   Training sessions carry a kind — water, land, supplementary, or whatever
   list you maintain.
-- **A calendar and a list** — the Events page shows a month grid with every
-  event on its date, colour-coded by behaviour; a two-day regatta occupies
-  both squares. Tap a day to create an event already dated. The dashboard
-  splits what's ahead into races, trainings, and everything else.
+- **Events and Trainings, separately** — races and one-offs live under
+  Events; the training schedule has its own section, read the way a coach
+  plans: this week, next week, and the season behind folded by month, each
+  session one tap from its sign-up sheet. Both offer the same month-grid
+  calendar showing the whole club week, colour-coded by behaviour, where a
+  two-day regatta occupies both squares and tapping a day creates an event
+  already dated. The dashboard splits what's ahead the same way.
 - **Sign-ups** — each event has a sign-up sheet (In / Maybe / Out, with
   notes). The lineup builder's paddler pool is **opt-in**: only members who
   signed up appear, Maybe flagged as tentative, with a "Show everyone" escape

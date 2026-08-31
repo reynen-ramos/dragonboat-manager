@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addDays,
   addMonths,
   dayNumber,
   inMonth,
@@ -7,6 +8,7 @@ import {
   monthLabel,
   monthOf,
   occursOn,
+  startOfWeek,
 } from './calendar';
 
 describe('monthGrid', () => {
@@ -49,6 +51,18 @@ describe('month arithmetic', () => {
     expect(dayNumber('2026-09-05')).toBe(5);
     expect(inMonth('2026-09-30', { year: 2026, month: 9 })).toBe(true);
     expect(inMonth('2026-10-01', { year: 2026, month: 9 })).toBe(false);
+  });
+
+  it('finds the Monday of any date’s week', () => {
+    expect(startOfWeek('2026-09-15')).toBe('2026-09-14'); // a Tuesday
+    expect(startOfWeek('2026-09-14')).toBe('2026-09-14'); // Monday is its own start
+    expect(startOfWeek('2026-09-20')).toBe('2026-09-14'); // Sunday closes the week
+    expect(startOfWeek('2026-01-01')).toBe('2025-12-29'); // crosses the year
+  });
+
+  it('adds days across month ends', () => {
+    expect(addDays('2026-08-30', 7)).toBe('2026-09-06');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
   });
 
   it('labels every month distinctly with its year', () => {

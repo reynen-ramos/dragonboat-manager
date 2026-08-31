@@ -47,6 +47,21 @@ export function dayNumber(iso: string): number {
   return Number(iso.slice(8, 10));
 }
 
+/** The Monday that starts the week containing the given date. */
+export function startOfWeek(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  const lead = (d.getUTCDay() + 6) % 7; // getUTCDay: 0 = Sunday
+  d.setUTCDate(d.getUTCDate() - lead);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The date `days` after the given one — ISO in, ISO out, UTC-pinned. */
+export function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * The month as full Monday-to-Sunday weeks of ISO dates.
  *

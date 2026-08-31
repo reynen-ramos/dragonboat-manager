@@ -28,6 +28,7 @@ const EventDetailPage = page(() => import('@/pages/EventDetailPage'), (m) => m.E
 const SignupsPage = page(() => import('@/pages/SignupsPage'), (m) => m.SignupsPage);
 const RaceDayPage = page(() => import('@/pages/RaceDayPage'), (m) => m.RaceDayPage);
 const LineupPage = page(() => import('@/pages/LineupPage'), (m) => m.LineupPage);
+const TrainingsPage = page(() => import('@/pages/TrainingsPage'), (m) => m.TrainingsPage);
 const ReportsPage = page(() => import('@/pages/ReportsPage'), (m) => m.ReportsPage);
 const SettingsPage = page(() => import('@/pages/SettingsPage'), (m) => m.SettingsPage);
 const NotFoundPage = page(() => import('@/pages/NotFoundPage'), (m) => m.NotFoundPage);
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       },
       { path: 'events/:eventId/racing', element: <RaceDayPage /> },
       { path: 'events/:eventId/crews/:crewId', element: <LineupPage /> },
+      { path: 'trainings', element: <TrainingsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },
