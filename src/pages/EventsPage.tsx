@@ -6,6 +6,7 @@ import { EventsCalendar } from '@/components/events/EventsCalendar';
 import { Button } from '@/components/ui/Button';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { RadioCards } from '@/components/ui/RadioCards';
+import { monthLabel, monthOf } from '@/domain/calendar';
 import { formatDate, todayIso } from '@/domain/dates';
 import type { ClubEvent } from '@/domain/types';
 import { useCategories, useEvents } from '@/queries/hooks';
@@ -78,7 +79,7 @@ export function EventsPage() {
           ) : (
             <div className="flex flex-col gap-8">
               {upcoming.length > 0 && <EventGroup title="Upcoming" events={upcoming} />}
-              {past.length > 0 && <EventGroup title="Past" events={past} />}
+              {past.length > 0 && <PastByMonth events={past} />}
             </div>
           )}
         </div>
@@ -111,6 +112,78 @@ function EventGroup({ title, events }: { title: string; events: ClubEvent[] }) {
         {events.map((event) => (
           <EventCard key={event.id} event={event} />
         ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The past, grouped by month with the weekly noise folded away.
+ *
+ * A season of recurring trainings would otherwise bury the races. Races and
+ * one-offs stay visible in every month; trainings collapse behind a per-month
+ * toggle, so the list reads as the season's story with the training rhythm
+ * available on demand. Collapsed cards are unmounted, which also spares the
+ * per-card category queries.
+ */
+function PastByMonth({ events }: { events: ClubEvent[] }) {
+  const settings = useSettings();
+  const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
+
+  // Events arrive newest-first; bucket by YYYY-MM preserving that order.
+  const months: { key: string; events: ClubEvent[] }[] = [];
+  for (const event of events) {
+    const last = months[months.length - 1];
+    const key = event.startDate.slice(0, 7);
+    if (last?.key === key) last.events.push(event);
+    else months.push({ key, events: [event] });
+  }
+
+  const toggle = (key: string) =>
+    setOpenMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Past</h2>
+      <div className="flex flex-col gap-6">
+        {months.map(({ key, events: monthEvents }) => {
+          const trainings = monthEvents.filter(
+            (e) => eventBase(e.type, settings.eventTypes) === 'practice',
+          );
+          const open = openMonths.has(key);
+          const shown = open
+            ? monthEvents
+            : monthEvents.filter((e) => eventBase(e.type, settings.eventTypes) !== 'practice');
+
+          return (
+            <div key={key}>
+              <div className="mb-2 flex flex-wrap items-baseline gap-3">
+                <h3 className="text-sm font-medium">{monthLabel(monthOf(`${key}-01`))}</h3>
+                {trainings.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
+                    onClick={() => toggle(key)}
+                  >
+                    {open ? 'Hide trainings' : `Show ${pluralise(trainings.length, 'training')}`}
+                  </button>
+                )}
+              </div>
+              {shown.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {shown.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
