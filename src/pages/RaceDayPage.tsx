@@ -21,7 +21,7 @@ import type { Category, Crew, RaceStage } from '@/domain/types';
 import {
   useAllRaceEntries,
   useCategories,
-  useCreateRaceEntry,
+  useCreateRaceEntries,
   useCrews,
   useDeleteRaceEntry,
   useEvent,
@@ -84,7 +84,7 @@ export function RaceDayPage() {
 function CategoryResults({ category }: { category: Category }) {
   const crews = useCrews(category.id);
   const allEntries = useAllRaceEntries();
-  const createEntry = useCreateRaceEntry();
+  const createEntries = useCreateRaceEntries();
 
   // Memoised because `?? []` would otherwise hand a fresh array to every memo
   // below it on each render, defeating them.
@@ -113,13 +113,13 @@ function CategoryResults({ category }: { category: Category }) {
   // numbered by how many semis there are.
   const raceCounts = raceCountsByStage(entries);
 
-  /** Enters every crew in the category into a new race at once. */
+  /** Enters every crew in the category into a new race, as one write. */
   const addRace = (stage: RaceStage) => {
     const existingHeats = entries.filter((e) => e.stage === stage).map((e) => e.heat ?? 1);
     const heat = existingHeats.length === 0 ? 1 : Math.max(...existingHeats) + 1;
-    crewList.forEach((crew, index) => {
-      createEntry.mutate({ crewId: crew.id, stage, heat, lane: index + 1 });
-    });
+    createEntries.mutate(
+      crewList.map((crew, index) => ({ crewId: crew.id, stage, heat, lane: index + 1 })),
+    );
   };
 
   return (
@@ -131,15 +131,15 @@ function CategoryResults({ category }: { category: Category }) {
             <AdvanceDialog
               entries={entries}
               crewName={(crewId) => crewList.find((c) => c.id === crewId)?.name ?? 'A crew'}
-              pending={createEntry.isPending}
-              onConfirm={(rows) => rows.forEach((row) => createEntry.mutate(row))}
+              pending={createEntries.isPending}
+              onConfirm={(rows) => createEntries.mutate(rows)}
             />
             {(['heat', 'semi', 'final'] as RaceStage[]).map((stage) => (
               <Button
                 key={stage}
                 size="sm"
                 onClick={() => addRace(stage)}
-                disabled={createEntry.isPending}
+                disabled={createEntries.isPending}
               >
                 <Plus /> {STAGE_LABELS[stage]}
               </Button>

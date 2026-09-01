@@ -205,11 +205,7 @@ export const useDeleteMember = () =>
 
 export const useImportMembers = () =>
   useInvalidatingMutation(
-    async (members: Omit<Member, 'id'>[]) => {
-      const created: Member[] = [];
-      for (const member of members) created.push(await adapter.members.create(member));
-      return created;
-    },
+    (members: Omit<Member, 'id'>[]) => adapter.members.createMany(members),
     [keys.members.all],
   );
 
@@ -218,14 +214,10 @@ export const useCreateEvent = () =>
     keys.events.all,
   ]);
 
-/** One mutation for a whole recurring series — a single invalidation round. */
+/** One mutation for a whole recurring series — a single write and refetch. */
 export const useCreateEvents = () =>
   useInvalidatingMutation(
-    async (inputs: Omit<ClubEvent, 'id'>[]) => {
-      const created: ClubEvent[] = [];
-      for (const input of inputs) created.push(await adapter.events.create(input));
-      return created;
-    },
+    (inputs: Omit<ClubEvent, 'id'>[]) => adapter.events.createMany(inputs),
     [keys.events.all],
   );
 
@@ -330,14 +322,10 @@ export const useBulkUpdateAssignments = () =>
 
 /** Applies a set of seating changes as one write, then one refetch. */
 export const useApplySeatingChanges = () =>
-  useInvalidatingMutation(async (changes: SeatingChange[]) => {
-    for (const change of changes) {
-      if (change.op === 'create') await adapter.assignments.create(change.assignment);
-      else if (change.op === 'update')
-        await adapter.assignments.update(change.id, change.patch);
-      else await adapter.assignments.remove(change.id);
-    }
-  }, [keys.assignments.all]);
+  useInvalidatingMutation(
+    (changes: SeatingChange[]) => adapter.assignments.applyChanges(changes),
+    [keys.assignments.all],
+  );
 
 /** Restores a crew's lineup verbatim — how undo and redo are applied. */
 export const useReplaceCrewLineup = () =>
@@ -352,10 +340,12 @@ export const useSetAvailability = () =>
     keys.availability.all,
   ]);
 
-export const useCreateRaceEntry = () =>
-  useInvalidatingMutation((input: Omit<RaceEntry, 'id'>) => adapter.raceEntries.create(input), [
-    keys.raceEntries.all,
-  ]);
+/** Enters a whole race — every crew, every lane — as one write. */
+export const useCreateRaceEntries = () =>
+  useInvalidatingMutation(
+    (inputs: Omit<RaceEntry, 'id'>[]) => adapter.raceEntries.createMany(inputs),
+    [keys.raceEntries.all],
+  );
 
 export const useUpdateRaceEntry = () =>
   useInvalidatingMutation(

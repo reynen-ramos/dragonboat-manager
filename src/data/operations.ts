@@ -70,8 +70,8 @@ export async function deleteCrewCascade(
   bundle.raceEntries.push(...raceEntries);
 
   await Promise.all([
-    ...assignments.map((a) => adapter.assignments.remove(a.id)),
-    ...raceEntries.map((r) => adapter.raceEntries.remove(r.id)),
+    adapter.assignments.removeMany(assignments.map((a) => a.id)),
+    adapter.raceEntries.removeMany(raceEntries.map((r) => r.id)),
   ]);
   await adapter.crews.remove(crewId);
   return bundle;
@@ -124,7 +124,7 @@ export async function deleteMemberCascade(
   bundle.assignments.push(...assignments);
   bundle.availability.push(...(await adapter.availability.listByMember(memberId)));
 
-  await Promise.all(assignments.map((a) => adapter.assignments.remove(a.id)));
+  await adapter.assignments.removeMany(assignments.map((a) => a.id));
   await adapter.availability.removeByMember(memberId);
   await adapter.members.remove(memberId);
   return bundle;
@@ -168,16 +168,18 @@ export async function duplicateCrew(
   });
 
   const assignments = await adapter.assignments.list({ crewId });
-  for (const a of assignments) {
-    const input: Omit<Assignment, 'id'> = {
-      crewId: copy.id,
-      memberId: a.memberId,
-      role: a.role,
-    };
-    if (a.seat) input.seat = { ...a.seat };
-    if (a.pinned) input.pinned = a.pinned;
-    await adapter.assignments.create(input);
-  }
+  await adapter.assignments.createMany(
+    assignments.map((a) => {
+      const input: Omit<Assignment, 'id'> = {
+        crewId: copy.id,
+        memberId: a.memberId,
+        role: a.role,
+      };
+      if (a.seat) input.seat = { ...a.seat };
+      if (a.pinned) input.pinned = a.pinned;
+      return input;
+    }),
+  );
 
   return copy;
 }

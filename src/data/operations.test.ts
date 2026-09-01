@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invalidateCache } from './mock/db';
 import { mockAdapter as adapter } from './mock/index';
 import {
@@ -65,6 +65,41 @@ async function seed() {
 beforeEach(() => {
   localStorage.clear();
   invalidateCache();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('cascade batching', () => {
+  // A cascade over the network must cost a handful of round trips, not one
+  // per row — the Supabase adapter inherits whatever call pattern this makes.
+  it('deletes an event with batched writes, never row by row', async () => {
+    const { event } = await seed();
+    const removeAssignment = vi.spyOn(adapter.assignments, 'remove');
+    const removeEntry = vi.spyOn(adapter.raceEntries, 'remove');
+    const removeManyAssignments = vi.spyOn(adapter.assignments, 'removeMany');
+    const removeManyEntries = vi.spyOn(adapter.raceEntries, 'removeMany');
+
+    await deleteEventCascade(adapter, event.id);
+
+    expect(removeAssignment).not.toHaveBeenCalled();
+    expect(removeEntry).not.toHaveBeenCalled();
+    // One crew in the seed → one batch per collection.
+    expect(removeManyAssignments).toHaveBeenCalledTimes(1);
+    expect(removeManyEntries).toHaveBeenCalledTimes(1);
+  });
+
+  it('duplicates a lineup with one batched insert', async () => {
+    const { crew } = await seed();
+    const createOne = vi.spyOn(adapter.assignments, 'create');
+    const createBatch = vi.spyOn(adapter.assignments, 'createMany');
+
+    await createCrewVariant(adapter, crew.id);
+
+    expect(createOne).not.toHaveBeenCalled();
+    expect(createBatch).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('deleteEventCascade', () => {

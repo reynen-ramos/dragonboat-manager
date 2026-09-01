@@ -1,3 +1,4 @@
+import type { SeatingChange } from '@/domain/seating';
 import type {
   Assignment,
   Availability,
@@ -26,8 +27,16 @@ export interface Repo<T extends { id: string }> {
   list(filter?: Partial<T>): Promise<T[]>;
   get(id: string): Promise<T | undefined>;
   create(input: Omit<T, 'id'>): Promise<T>;
+  /**
+   * Inserts many rows as one write, in the order given. Batch operations
+   * exist so a CSV import or a recurring series costs one round trip on a
+   * network backend, not one per row.
+   */
+  createMany(inputs: Omit<T, 'id'>[]): Promise<T[]>;
   update(id: string, patch: Partial<Omit<T, 'id'>>): Promise<T>;
   remove(id: string): Promise<void>;
+  /** Removes many rows as one write. Ids that no longer exist are ignored. */
+  removeMany(ids: string[]): Promise<void>;
   /** Applied as one atomic write, so a re-seat never leaves a half-moved crew. */
   bulkUpdate(patches: { id: string; patch: Partial<Omit<T, 'id'>> }[]): Promise<T[]>;
   /**
@@ -48,6 +57,12 @@ export interface AssignmentRepo extends Repo<Assignment> {
    * fresh rows would break that identity.
    */
   replaceForCrew(crewId: string, assignments: Assignment[]): Promise<Assignment[]>;
+  /**
+   * Applies a planned set of seating changes as one atomic write — a drop that
+   * swaps two paddlers, or a fill that seats twenty, either fully lands or
+   * fully doesn't. A half-applied plan would leave a boat no one planned.
+   */
+  applyChanges(changes: SeatingChange[]): Promise<void>;
 }
 
 /** Availability is keyed by (eventId, memberId) rather than an id of its own. */
