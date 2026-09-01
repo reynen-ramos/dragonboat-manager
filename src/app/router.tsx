@@ -29,6 +29,11 @@ const SignupsPage = page(() => import('@/pages/SignupsPage'), (m) => m.SignupsPa
 const RaceDayPage = page(() => import('@/pages/RaceDayPage'), (m) => m.RaceDayPage);
 const LineupPage = page(() => import('@/pages/LineupPage'), (m) => m.LineupPage);
 const TrainingsPage = page(() => import('@/pages/TrainingsPage'), (m) => m.TrainingsPage);
+const TimeTrialsPage = page(() => import('@/pages/TimeTrialsPage'), (m) => m.TimeTrialsPage);
+const TimeTrialSessionPage = page(
+  () => import('@/pages/TimeTrialSessionPage'),
+  (m) => m.TimeTrialSessionPage,
+);
 const ReportsPage = page(() => import('@/pages/ReportsPage'), (m) => m.ReportsPage);
 const SettingsPage = page(() => import('@/pages/SettingsPage'), (m) => m.SettingsPage);
 const NotFoundPage = page(() => import('@/pages/NotFoundPage'), (m) => m.NotFoundPage);
@@ -55,6 +60,8 @@ export const router = createBrowserRouter([
       { path: 'events/:eventId/racing', element: <RaceDayPage /> },
       { path: 'events/:eventId/crews/:crewId', element: <LineupPage /> },
       { path: 'trainings', element: <TrainingsPage /> },
+      { path: 'time-trials', element: <TimeTrialsPage /> },
+      { path: 'time-trials/:sessionId', element: <TimeTrialSessionPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: '*', element: <NotFoundPage /> },

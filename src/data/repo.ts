@@ -10,6 +10,8 @@ import type {
   Profile,
   RaceEntry,
   Snapshot,
+  TimeTrialResult,
+  TimeTrialSession,
 } from '@/domain/types';
 
 export type { Snapshot };
@@ -116,6 +118,8 @@ export interface DataAdapter {
   crews: Repo<Crew>;
   assignments: AssignmentRepo;
   raceEntries: Repo<RaceEntry>;
+  timeTrialSessions: Repo<TimeTrialSession>;
+  timeTrialResults: Repo<TimeTrialResult>;
   availability: AvailabilityRepo;
   settings: SettingsRepo;
   admin: AdminRepo;

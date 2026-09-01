@@ -13,6 +13,8 @@ import type {
   SeatZone,
   SidePreference,
   Snapshot,
+  TimeTrialResult,
+  TimeTrialSession,
 } from './types';
 
 /**
@@ -471,6 +473,64 @@ function buildTrainingSeason(today: string, members: Member[], skip: Set<string>
   return season;
 }
 
+// --- Time trials -------------------------------------------------------------
+
+interface TrialSeason {
+  sessions: TimeTrialSession[];
+  results: TimeTrialResult[];
+}
+
+/**
+ * Three trial sittings: two 200m OC1 selection trials seven weeks apart (so a
+ * member's progress view has a line to draw) and a 500m erg night between
+ * them. Times are fixed functions of the member index, mildly faster in the
+ * later OC1 sitting, with one exact tie and one listed-but-untimed run so the
+ * ranking sheet demonstrates every state it can show.
+ */
+function buildTimeTrials(today: string): TrialSeason {
+  const OC1_EARLY = 'demo-trial-1';
+  const ERG = 'demo-trial-2';
+  const OC1_LATE = 'demo-trial-3';
+
+  const sessions: TimeTrialSession[] = [
+    { id: OC1_EARLY, date: shiftDate(today, -63), name: 'Selection Trial I', distanceM: 200, discipline: 'oc1' },
+    { id: ERG, date: shiftDate(today, -35), name: 'Erg Benchmarks', distanceM: 500, discipline: 'erg' },
+    { id: OC1_LATE, date: shiftDate(today, -14), name: 'Selection Trial II', distanceM: 200, discipline: 'oc1' },
+  ];
+
+  const results: TimeTrialResult[] = [];
+  let n = 0;
+  const add = (sessionId: string, index: number, timeMs?: number, note?: string) => {
+    results.push({
+      id: `demo-trial-result-${++n}`,
+      sessionId,
+      memberId: memberId(index),
+      timeMs,
+      ...(note ? { note } : {}),
+    });
+  };
+
+  // The OC1 field: sixteen actives across the roster, spread over ~15 s.
+  const OC1_FIELD = [0, 1, 2, 4, 6, 8, 15, 16, 17, 18, 19, 20, 22, 24, 28, 30];
+  OC1_FIELD.forEach((index, i) => add(OC1_EARLY, index, 68_000 + i * 950 + (index % 3) * 240));
+
+  // Second sitting: the same field, most of them a second or two quicker.
+  OC1_FIELD.forEach((index, i) => {
+    if (index === 30) {
+      add(OC1_LATE, index, undefined, 'Capsized at the turn — no time');
+      return;
+    }
+    add(OC1_LATE, index, 66_500 + i * 900 + (index % 3) * 240);
+  });
+  // A newcomer matching the fastest to the millisecond: a shared 1st place.
+  add(OC1_LATE, 34, 66_500);
+
+  const ERG_FIELD = [0, 2, 3, 5, 7, 9, 16, 18, 21, 23, 25, 27, 29, 31, 36, 43];
+  ERG_FIELD.forEach((index, i) => add(ERG, index, 104_000 + i * 1_300 + (index % 4) * 310));
+
+  return { sessions, results };
+}
+
 // --- The snapshot ------------------------------------------------------------
 
 export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
@@ -592,6 +652,7 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     members,
     new Set([today, lastSaturday, lastTuesday]),
   );
+  const trials = buildTimeTrials(today);
 
   return {
     version: SNAPSHOT_VERSION,
@@ -603,6 +664,8 @@ export function buildDemoSnapshot(today: string = todayIso()): Snapshot {
     assignments: [...buildAssignments(), ...season.assignments],
     availability: [...buildAvailability(today), ...season.availability],
     raceEntries: buildRaceEntries(),
+    timeTrialSessions: trials.sessions,
+    timeTrialResults: trials.results,
     settings: DEFAULT_CLUB_SETTINGS,
   };
 }

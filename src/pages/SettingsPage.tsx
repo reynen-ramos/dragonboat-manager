@@ -18,6 +18,7 @@ import {
   useSaveSettings,
   useSettings,
   useSettingsQuery,
+  useTimeTrialSessions,
 } from '@/queries/hooks';
 import { pluralise } from '@/utils/format';
 import { useBackupReminder } from '@/stores/backupReminder';
@@ -124,6 +125,8 @@ export function SettingsPage() {
 
         <EventTypesCard />
         <TrainingKindsCard />
+
+        <DisciplinesCard />
 
         <Card className="p-5">
           <h2 className="font-semibold">Your data</h2>
@@ -414,6 +417,92 @@ function TrainingKindsCard() {
         />
         <Button size="sm" onClick={add} disabled={!newLabel.trim()}>
           <Plus /> Add kind
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+/** Time-trial disciplines: same contract as training kinds — labels the club owns. */
+function DisciplinesCard() {
+  const settings = useSettings();
+  const saveSettings = useSaveSettings();
+  const sessions = useTimeTrialSessions();
+  const [newLabel, setNewLabel] = useState('');
+
+  const usage = (id: string) => (sessions.data ?? []).filter((s) => s.discipline === id).length;
+
+  const save = (disciplines: typeof settings.disciplines) =>
+    saveSettings.mutate({ ...settings, disciplines });
+
+  const rename = (id: string, label: string) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    save(settings.disciplines.map((d) => (d.id === id ? { ...d, label: trimmed } : d)));
+  };
+
+  const add = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    save([
+      ...settings.disciplines,
+      { id: slugId(label, settings.disciplines.map((d) => d.id)), label },
+    ]);
+    setNewLabel('');
+  };
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold">Time-trial disciplines</h2>
+      <p className="mt-1 text-sm text-muted">
+        The craft or machine a time trial is paddled on. Rename or add freely; a discipline in use
+        can't be deleted.
+      </p>
+
+      <ul className="mt-4 flex flex-col gap-2">
+        {settings.disciplines.map((discipline) => {
+          const used = usage(discipline.id);
+          return (
+            <li key={discipline.id} className="flex flex-wrap items-center gap-2">
+              <Input
+                className="h-9 max-w-56 text-sm"
+                aria-label={`Rename ${discipline.label}`}
+                defaultValue={discipline.label}
+                onBlur={(e) => {
+                  if (e.target.value.trim() && e.target.value.trim() !== discipline.label) {
+                    rename(discipline.id, e.target.value);
+                  } else {
+                    e.target.value = discipline.label;
+                  }
+                }}
+              />
+              {used > 0 && <span className="text-xs text-muted">{pluralise(used, 'session')}</span>}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Delete ${discipline.label}`}
+                disabled={used > 0}
+                title={used > 0 ? 'In use — change those sessions first.' : undefined}
+                onClick={() => save(settings.disciplines.filter((d) => d.id !== discipline.id))}
+              >
+                <Trash2 />
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Input
+          className="h-9 max-w-56 text-sm"
+          aria-label="New discipline name"
+          placeholder="e.g. OC2"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+        />
+        <Button size="sm" onClick={add} disabled={!newLabel.trim()}>
+          <Plus /> Add discipline
         </Button>
       </div>
     </Card>

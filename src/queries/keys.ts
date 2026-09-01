@@ -37,6 +37,14 @@ export const keys = {
     all: ['raceEntries'] as const,
     byCrew: (crewId: string) => ['raceEntries', { crewId }] as const,
   },
+  timeTrialSessions: {
+    all: ['timeTrialSessions'] as const,
+    detail: (id: string) => ['timeTrialSessions', id] as const,
+  },
+  timeTrialResults: {
+    all: ['timeTrialResults'] as const,
+    bySession: (sessionId: string) => ['timeTrialResults', { sessionId }] as const,
+  },
   settings: ['settings'] as const,
   session: ['session'] as const,
 } as const;

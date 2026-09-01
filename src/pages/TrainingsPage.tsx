@@ -1,4 +1,4 @@
-import { ClipboardCheck, Dumbbell, Plus } from 'lucide-react';
+import { ClipboardCheck, Dumbbell, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FullCalendar, PastByMonth } from '@/components/events/EventList';
@@ -57,9 +57,16 @@ export function TrainingsPage() {
       <PageHeader
         title="Trainings"
         actions={
-          <Button variant="primary" onClick={() => newTraining()}>
-            <Plus /> New training
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/time-trials">
+                <Timer /> Time trials
+              </Link>
+            </Button>
+            <Button variant="primary" onClick={() => newTraining()}>
+              <Plus /> New training
+            </Button>
+          </div>
         }
       />
 

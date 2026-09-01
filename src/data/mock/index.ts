@@ -22,7 +22,15 @@ import { mutateDb, readDb, resetDb, seedDemoDb, writeDb } from './db';
  */
 
 /** Collections in the snapshot that are plain id-keyed lists. */
-type EntityKey = 'members' | 'events' | 'categories' | 'crews' | 'assignments' | 'raceEntries';
+type EntityKey =
+  | 'members'
+  | 'events'
+  | 'categories'
+  | 'crews'
+  | 'assignments'
+  | 'raceEntries'
+  | 'timeTrialSessions'
+  | 'timeTrialResults';
 
 function matches<T>(item: T, filter?: Partial<T>): boolean {
   if (!filter) return true;
@@ -282,6 +290,8 @@ export const mockAdapter: DataAdapter = {
   crews: makeRepo('crews'),
   assignments: assignmentRepo,
   raceEntries: makeRepo('raceEntries'),
+  timeTrialSessions: makeRepo('timeTrialSessions'),
+  timeTrialResults: makeRepo('timeTrialResults'),
   availability: availabilityRepo,
   settings: settingsRepo,
   admin: adminRepo,

@@ -7,12 +7,21 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/Button';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
 import { seatLabel, SIDE_LABELS } from '@/domain/boat';
-import { ageOn, formatDate, todayIso } from '@/domain/dates';
+import { ageOn, formatDate, formatRaceTime, todayIso } from '@/domain/dates';
 import type { MemberHistoryRow } from '@/domain/memberHistory';
+import { disciplineLabel, progressSeries } from '@/domain/timeTrials';
 import type { CrewRole } from '@/domain/types';
 import { eventTypeLabel } from '@/domain/eventTypes';
 import { useMemberHistory } from '@/queries/derived';
-import { useDeleteMember, useMember, useSettings, useUndoableDelete } from '@/queries/hooks';
+import {
+  useAllTimeTrialResults,
+  useDeleteMember,
+  useMember,
+  useSettings,
+  useTimeTrialSessions,
+  useUndoableDelete,
+} from '@/queries/hooks';
+import { cn } from '@/utils/cn';
 import { ZONE_LABELS } from '@/domain/boat';
 import { categoryName, fullName, formatWeight, GENDER_LABEL, pluralise, SIDE_PREFERENCE_LABEL } from '@/utils/format';
 
@@ -130,6 +139,8 @@ export function MemberDetailPage() {
         </Card>
       </div>
 
+      <TrialProgress memberId={m.id} />
+
       {history.isError ? (
         <section className="mt-8">
           <LoadFailed onRetry={history.refetch} />
@@ -197,6 +208,72 @@ export function MemberDetailPage() {
         </p>
       </ConfirmDialog>
     </>
+  );
+}
+
+/**
+ * The member's time trials: their best per kind, and every timed run behind it
+ * as a bar — long is slow, short is fast, so a shrinking stack reads as
+ * progress at a glance. Renders nothing for the untried.
+ */
+function TrialProgress({ memberId }: { memberId: string }) {
+  const sessions = useTimeTrialSessions();
+  const results = useAllTimeTrialResults();
+  const settings = useSettings();
+
+  const series = progressSeries(memberId, sessions.data ?? [], results.data ?? []);
+  if (series.length === 0) return null;
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Time trials</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {series.map((kind) => {
+          const best = Math.min(...kind.points.map((p) => p.timeMs));
+          const slowest = Math.max(...kind.points.map((p) => p.timeMs));
+          return (
+            <Card key={`${kind.distanceM}:${kind.discipline ?? ''}`} className="p-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="text-sm font-semibold">
+                  {kind.distanceM}m
+                  {kind.discipline
+                    ? ` · ${disciplineLabel(kind.discipline, settings.disciplines)}`
+                    : ''}
+                </h3>
+                <p className="text-sm">
+                  <span className="text-muted">Best </span>
+                  <span className="tabular font-medium">{formatRaceTime(best)}</span>
+                </p>
+              </div>
+              <ul className="mt-3 flex flex-col gap-1.5">
+                {kind.points.map((point) => (
+                  <li key={point.sessionId} className="flex items-center gap-2 text-sm">
+                    <Link
+                      to={`/time-trials/${point.sessionId}`}
+                      className="w-24 shrink-0 truncate text-muted hover:underline"
+                    >
+                      {formatDate(point.date)}
+                    </Link>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full surface-sunken">
+                      <span
+                        className={cn(
+                          'block h-full rounded-full',
+                          point.timeMs === best ? 'bg-brand-600' : 'bg-brand-600/40',
+                        )}
+                        style={{ width: `${(point.timeMs / slowest) * 100}%` }}
+                      />
+                    </span>
+                    <span className="tabular w-20 shrink-0 text-right">
+                      {formatRaceTime(point.timeMs)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

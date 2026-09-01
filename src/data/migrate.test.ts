@@ -22,6 +22,17 @@ describe('migrateSnapshot', () => {
     expect(snapshot.exportedAt).toBe('2026-01-01T00:00:00.000Z');
   });
 
+  it('loads a snapshot written before time trials existed with empty trials', () => {
+    // `good` predates the collections entirely — an additive collection must
+    // load as empty rather than bumping the format or dropping anything.
+    const { snapshot, dropped } = migrateSnapshot(good);
+
+    expect(dropped).toEqual([]);
+    expect(snapshot.timeTrialSessions).toEqual([]);
+    expect(snapshot.timeTrialResults).toEqual([]);
+    expect(snapshot.settings.disciplines.length).toBeGreaterThan(0);
+  });
+
   it('refuses a snapshot from a newer version rather than guessing', () => {
     // The bug this closes: `version` was written from the first release and
     // read by nothing, so a v1 build loaded a v2 database blindly.

@@ -35,6 +35,8 @@ const COLLECTIONS = [
   'assignments',
   'availability',
   'raceEntries',
+  'timeTrialSessions',
+  'timeTrialResults',
 ] as const;
 
 export function emptySnapshot(): Snapshot {
@@ -48,6 +50,8 @@ export function emptySnapshot(): Snapshot {
     assignments: [],
     availability: [],
     raceEntries: [],
+    timeTrialSessions: [],
+    timeTrialResults: [],
     settings: DEFAULT_CLUB_SETTINGS,
   };
 }
