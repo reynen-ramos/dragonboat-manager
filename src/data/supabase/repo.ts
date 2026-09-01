@@ -120,7 +120,8 @@ export function makeSupabaseRepo<T extends { id: string }>(
       unwrap(
         await from().upsert(
           rowsToRestore.map((row) => mapper.toRow(row, cid)),
-          { onConflict: 'id', ignoreDuplicates: true },
+          // Identity is per club: ids only collide within one.
+          { onConflict: 'club_id,id', ignoreDuplicates: true },
         ),
       );
     },

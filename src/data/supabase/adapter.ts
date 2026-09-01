@@ -33,6 +33,7 @@ import {
   timeTrialResultMapper,
   timeTrialSessionMapper,
 } from './mapping';
+import { makeChangeFanout } from './realtime';
 import { makeSupabaseRepo, unwrap } from './repo';
 
 /**
@@ -230,7 +231,9 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
       const cid = await clubId();
       for (const slab of chunked(entries.map((e) => availabilityToRow(e, cid)))) {
         unwrap(
-          await client.from('availability').upsert(slab, { onConflict: 'event_id,member_id' }),
+          await client
+            .from('availability')
+            .upsert(slab, { onConflict: 'club_id,event_id,member_id' }),
         );
       }
       return entries;
@@ -520,9 +523,62 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
 
   return {
     name: 'supabase',
-    // Realtime lands in a later phase; until then other devices refetch on
-    // focus (staleTime-bounded), and nothing subscribes.
-    subscribeToExternalChanges: () => () => {},
+
+    subscribeToExternalChanges(callback) {
+      // One channel over the whole schema, not one per table: the payload
+      // names the table, and the app only wants "collection X moved".
+      const fanout = makeChangeFanout(callback);
+      let channel: ReturnType<typeof client.channel> | undefined;
+      let epoch = 0;
+      let retryMs = 2_000;
+      let retryTimer: ReturnType<typeof setTimeout> | undefined;
+      let disposed = false;
+
+      const join = () => {
+        if (disposed) return;
+        if (retryTimer) clearTimeout(retryTimer);
+        if (channel) void client.removeChannel(channel);
+        const mine = ++epoch;
+        channel = client
+          .channel(`db-changes-${mine}`)
+          .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+            fanout.onTableChange(payload.table);
+          })
+          .subscribe((status) => {
+            if (mine !== epoch) return; // a stale channel's afterlife
+            if (status === 'SUBSCRIBED') {
+              retryMs = 2_000;
+              // Anything could have changed while unsubscribed.
+              callback(undefined);
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              // A flood of WAL events (a snapshot import) can get the
+              // subscription dropped server-side; rejoin with backoff so
+              // sync heals itself instead of dying for the session.
+              retryTimer = setTimeout(join, retryMs);
+              retryMs = Math.min(retryMs * 2, 30_000);
+            }
+          });
+      };
+      join();
+
+      // The row-security filter on a realtime subscription is FIXED at join
+      // time: the shell mounts this before the stored session resolves, so
+      // the first join is anonymous and would deliver nothing, forever.
+      // Rejoin on every auth transition so the subscription always carries
+      // the current identity (token refreshes included — cheap and hourly).
+      const { data } = client.auth.onAuthStateChange(() => {
+        setTimeout(join, 0); // never call supabase-js from inside its own callback
+      });
+
+      return () => {
+        disposed = true;
+        if (retryTimer) clearTimeout(retryTimer);
+        fanout.dispose();
+        data.subscription.unsubscribe();
+        if (channel) void client.removeChannel(channel);
+      };
+    },
+
     takeReadWarnings: () => [],
     members,
     events,
