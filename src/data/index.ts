@@ -8,10 +8,7 @@ import { createSupabaseAdapter } from './supabase/adapter';
  * Defaults to the mock adapter so the app runs with no configuration. Setting
  * `VITE_DATA_ADAPTER=supabase` (with `VITE_SUPABASE_URL` and
  * `VITE_SUPABASE_ANON_KEY`) switches the whole app over to Postgres — no
- * other code changes.
- *
- * Until the auth phase locks the database down, the Supabase adapter must
- * only ever point at a local or staging project (see supabase/README.md).
+ * other code changes. See supabase/README.md for the backend workflow.
  */
 export function createAdapter(): DataAdapter {
   const configured = import.meta.env.VITE_DATA_ADAPTER;

@@ -8,22 +8,24 @@
 -- Conventions:
 --  * text + CHECK instead of Postgres enums - checks are painless to alter,
 --    and the app remains the validation source of truth.
---  * ids are client-generated UUIDs (crypto.randomUUID), so `default` is a
---    fallback, not the normal path.
+--  * ids are text, not uuid: the app's id contract is "opaque string". New
+--    rows get client-generated UUIDs, but demo data and imported backups
+--    carry readable ids like 'demo-member-1' that must restore verbatim —
+--    identity survives across storage engines. `default` is a fallback.
 --  * FK `on delete cascade` is an integrity BACKSTOP. The app deletes
 --    children first itself (it needs the deleted rows back for Undo), so
 --    these cascades never fire in normal operation.
 
 create table clubs (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key default gen_random_uuid()::text,
   name text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table members (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
   first_name text not null,
   last_name text not null,
   gender text not null check (gender in ('male', 'female', 'other')),
@@ -46,8 +48,8 @@ create table members (
 create index members_club_idx on members (club_id);
 
 create table events (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
   name text not null,
   start_date date not null,
   end_date date,
@@ -63,9 +65,9 @@ create table events (
 create index events_club_idx on events (club_id);
 
 create table categories (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
-  event_id uuid not null references events (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
+  event_id text not null references events (id) on delete cascade,
   boat_size smallint not null check (boat_size in (10, 20)),
   gender_class text not null check (gender_class in ('open', 'mixed', 'women')),
   age_division text check (
@@ -80,13 +82,13 @@ create index categories_club_idx on categories (club_id);
 create index categories_event_idx on categories (event_id);
 
 create table crews (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
-  category_id uuid not null references categories (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
+  category_id text not null references categories (id) on delete cascade,
   name text not null,
   notes text,
   -- A variant of a deleted crew is meaningless, so it goes down with it.
-  variant_of uuid references crews (id) on delete cascade,
+  variant_of text references crews (id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -94,10 +96,10 @@ create index crews_club_idx on crews (club_id);
 create index crews_category_idx on crews (category_id);
 
 create table assignments (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
-  crew_id uuid not null references crews (id) on delete cascade,
-  member_id uuid not null references members (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
+  crew_id text not null references crews (id) on delete cascade,
+  member_id text not null references members (id) on delete cascade,
   role text not null check (role in ('paddler', 'drummer', 'cox', 'reserve')),
   seat_row smallint,
   seat_side text check (seat_side in ('left', 'right')),
@@ -114,9 +116,9 @@ create index assignments_crew_idx on assignments (crew_id);
 create index assignments_member_idx on assignments (member_id);
 
 create table race_entries (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
-  crew_id uuid not null references crews (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
+  crew_id text not null references crews (id) on delete cascade,
   stage text not null check (stage in ('heat', 'semi', 'final')),
   heat smallint,
   lane smallint,
@@ -131,9 +133,9 @@ create index race_entries_club_idx on race_entries (club_id);
 create index race_entries_crew_idx on race_entries (crew_id);
 
 create table availability (
-  club_id uuid not null references clubs (id) on delete cascade,
-  event_id uuid not null references events (id) on delete cascade,
-  member_id uuid not null references members (id) on delete cascade,
+  club_id text not null references clubs (id) on delete cascade,
+  event_id text not null references events (id) on delete cascade,
+  member_id text not null references members (id) on delete cascade,
   status text not null check (status in ('in', 'out', 'maybe')),
   note text,
   updated_at timestamptz not null default now(),
@@ -143,8 +145,8 @@ create index availability_club_idx on availability (club_id);
 create index availability_member_idx on availability (member_id);
 
 create table time_trial_sessions (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
   date date not null,
   name text,
   distance_m integer not null,
@@ -156,10 +158,10 @@ create table time_trial_sessions (
 create index time_trial_sessions_club_idx on time_trial_sessions (club_id);
 
 create table time_trial_results (
-  id uuid primary key default gen_random_uuid(),
-  club_id uuid not null references clubs (id) on delete cascade,
-  session_id uuid not null references time_trial_sessions (id) on delete cascade,
-  member_id uuid not null references members (id) on delete cascade,
+  id text primary key default gen_random_uuid()::text,
+  club_id text not null references clubs (id) on delete cascade,
+  session_id text not null references time_trial_sessions (id) on delete cascade,
+  member_id text not null references members (id) on delete cascade,
   time_ms integer,
   note text,
   created_at timestamptz not null default now(),
@@ -171,7 +173,7 @@ create index time_trial_results_session_idx on time_trial_results (session_id);
 -- One settings row per club; the app migrates the blob's shape client-side,
 -- exactly as it does for the localStorage snapshot.
 create table club_settings (
-  club_id uuid primary key references clubs (id) on delete cascade,
+  club_id text primary key references clubs (id) on delete cascade,
   data jsonb not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -187,12 +189,14 @@ begin
 end;
 $$;
 
+-- Every table except availability: its updated_at is data the app writes at
+-- answer time, not storage bookkeeping — a trigger would clobber it on upsert.
 do $$
 declare t text;
 begin
   foreach t in array array[
     'clubs', 'members', 'events', 'categories', 'crews', 'assignments',
-    'race_entries', 'availability', 'time_trial_sessions',
+    'race_entries', 'time_trial_sessions',
     'time_trial_results', 'club_settings'
   ] loop
     execute format(
@@ -210,17 +214,17 @@ $$;
 -- (a half-applied drop leaves a boat no one planned). Everything else is
 -- client-orchestrated, identically to the localStorage adapter.
 
-create function replace_for_crew(p_club_id uuid, p_crew_id uuid, p_rows jsonb)
+create function replace_for_crew(p_club_id text, p_crew_id text, p_rows jsonb)
 returns void
 language plpgsql as $$
 begin
   delete from assignments where crew_id = p_crew_id and club_id = p_club_id;
   insert into assignments (id, club_id, crew_id, member_id, role, seat_row, seat_side, pinned)
   select
-    (r ->> 'id')::uuid,
+    r ->> 'id',
     p_club_id,
-    (r ->> 'crewId')::uuid,
-    (r ->> 'memberId')::uuid,
+    r ->> 'crewId',
+    r ->> 'memberId',
     r ->> 'role',
     (r ->> 'seatRow')::smallint,
     r ->> 'seatSide',
@@ -229,7 +233,7 @@ begin
 end;
 $$;
 
-create function apply_seating_changes(p_club_id uuid, p_changes jsonb)
+create function apply_seating_changes(p_club_id text, p_changes jsonb)
 returns void
 language plpgsql as $$
 declare
@@ -239,10 +243,10 @@ begin
     if c ->> 'op' = 'create' then
       insert into assignments (id, club_id, crew_id, member_id, role, seat_row, seat_side, pinned)
       values (
-        coalesce((c ->> 'id')::uuid, gen_random_uuid()),
+        coalesce(c ->> 'id', gen_random_uuid()::text),
         p_club_id,
-        (c ->> 'crewId')::uuid,
-        (c ->> 'memberId')::uuid,
+        c ->> 'crewId',
+        c ->> 'memberId',
         c ->> 'role',
         (c ->> 'seatRow')::smallint,
         c ->> 'seatSide',
@@ -250,20 +254,20 @@ begin
       );
     elsif c ->> 'op' = 'update' then
       update assignments set
-        crew_id  = coalesce((c ->> 'crewId')::uuid, crew_id),
-        member_id = coalesce((c ->> 'memberId')::uuid, member_id),
+        crew_id  = coalesce(c ->> 'crewId', crew_id),
+        member_id = coalesce(c ->> 'memberId', member_id),
         role = coalesce(c ->> 'role', role),
         -- Patches carry explicit nulls to clear a seat; presence of the key
         -- is what distinguishes "clear it" from "leave it".
         seat_row = case when c ? 'seatRow' then (c ->> 'seatRow')::smallint else seat_row end,
         seat_side = case when c ? 'seatSide' then c ->> 'seatSide' else seat_side end,
         pinned = case when c ? 'pinned' then (c ->> 'pinned')::boolean else pinned end
-      where id = (c ->> 'id')::uuid and club_id = p_club_id;
+      where id = c ->> 'id' and club_id = p_club_id;
       if not found then
         raise exception 'No assignment with id %', c ->> 'id';
       end if;
     else
-      delete from assignments where id = (c ->> 'id')::uuid and club_id = p_club_id;
+      delete from assignments where id = c ->> 'id' and club_id = p_club_id;
     end if;
   end loop;
 end;

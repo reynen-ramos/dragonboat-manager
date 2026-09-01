@@ -24,6 +24,27 @@ const renderSettings = () => {
   );
 };
 
+describe('SettingsPage access', () => {
+  it('lists the current login and registers an invited email', async () => {
+    renderSettings();
+    await screen.findByText('Access');
+
+    // The mock is always signed in as the demo admin.
+    expect(await screen.findByText('demo@dragonboat.local')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Email to invite'), 'New.Paddler@Example.com');
+    await userEvent.selectOptions(screen.getByLabelText('Role for the invitation'), 'paddler');
+    await userEvent.click(screen.getByRole('button', { name: /Invite/ }));
+
+    // Stored lowercased, shown as not yet signed in.
+    expect(await screen.findByText('new.paddler@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/hasn't signed in yet/)).toBeInTheDocument();
+    expect(
+      (await mockAdapter.access.list()).some((row) => row.email === 'new.paddler@example.com'),
+    ).toBe(true);
+  });
+});
+
 describe('SettingsPage event types', () => {
   it('adds a custom event type with its declared behaviour', async () => {
     renderSettings();

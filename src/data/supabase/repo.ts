@@ -22,8 +22,17 @@ export function makeSupabaseRepo<T extends { id: string }>(
   client: SupabaseClient,
   clubId: () => Promise<string>,
   mapper: EntityMapper<T>,
+  options: {
+    /**
+     * Reads go here instead of the table — how members are read through the
+     * privacy-filtering `member_directory` view while writes (staff-only by
+     * policy anyway) still hit the table.
+     */
+    readFrom?: string;
+  } = {},
 ): Repo<T> {
   const from = () => client.from(mapper.table);
+  const readFrom = () => client.from(options.readFrom ?? mapper.table);
 
   const where = (filter?: Partial<T>): Record<string, unknown> => {
     const match: Record<string, unknown> = {};
@@ -38,7 +47,7 @@ export function makeSupabaseRepo<T extends { id: string }>(
     async list(filter) {
       const cid = await clubId();
       const rows = unwrap(
-        await from().select('*').eq('club_id', cid).match(where(filter)).order('created_at'),
+        await readFrom().select('*').eq('club_id', cid).match(where(filter)).order('created_at'),
       );
       return (rows as Record<string, unknown>[]).map((row) => mapper.fromRow(row));
     },
@@ -46,7 +55,7 @@ export function makeSupabaseRepo<T extends { id: string }>(
     async get(id) {
       const cid = await clubId();
       const row = unwrap(
-        await from().select('*').eq('club_id', cid).eq('id', id).maybeSingle(),
+        await readFrom().select('*').eq('club_id', cid).eq('id', id).maybeSingle(),
       );
       return row ? mapper.fromRow(row as Record<string, unknown>) : undefined;
     },

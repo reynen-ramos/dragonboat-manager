@@ -95,7 +95,13 @@ export interface AdminRepo {
 export type OAuthProvider = 'google' | 'facebook';
 
 export interface Session {
-  profile: Profile;
+  /** The signed-in email — present even before any club knows this person. */
+  email: string;
+  /**
+   * Null when the email isn't registered with a club yet: the person signed
+   * in without an invitation. They can found a club or ask to be invited.
+   */
+  profile: Profile | null;
 }
 
 export interface AuthGateway {
@@ -103,11 +109,33 @@ export interface AuthGateway {
   signInWithOAuth(provider: OAuthProvider): Promise<void>;
   signInWithMagicLink(email: string): Promise<void>;
   signOut(): Promise<void>;
+  /** Founds a club with this login as its admin, then re-emits the session. */
+  createClub(name: string): Promise<void>;
   /** Returns an unsubscribe function. */
   onSessionChange(callback: (session: Session | null) => void): () => void;
   /** Which sign-in buttons to show. Data, so adding a provider is config. */
   availableProviders: OAuthProvider[];
   magicLinkEnabled: boolean;
+}
+
+/** One login's standing in the club, as the Access screen manages it. */
+export interface ClubAccess {
+  profileId: string;
+  email: string;
+  role: Profile['role'];
+  /** The roster member this login is linked to, if any. */
+  memberId?: string;
+  /** Whether the invited email has actually signed in yet. */
+  active: boolean;
+}
+
+/** Admin-only management of who can sign in and as what. */
+export interface AccessRepo {
+  list(): Promise<ClubAccess[]>;
+  invite(email: string, role: Profile['role'], memberId?: string): Promise<void>;
+  setRole(profileId: string, role: Profile['role']): Promise<void>;
+  linkMember(profileId: string, memberId: string | undefined): Promise<void>;
+  revoke(profileId: string): Promise<void>;
 }
 
 export interface DataAdapter {
@@ -132,4 +160,5 @@ export interface DataAdapter {
   settings: SettingsRepo;
   admin: AdminRepo;
   auth: AuthGateway;
+  access: AccessRepo;
 }

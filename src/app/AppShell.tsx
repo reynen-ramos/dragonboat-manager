@@ -1,8 +1,11 @@
-import { BarChart3, CalendarDays, CloudOff, Dumbbell, LayoutDashboard, Settings, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, CloudOff, Dumbbell, LayoutDashboard, LogOut, Settings, Users } from 'lucide-react';
 import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { LoginScreen, UnregisteredScreen } from '@/auth/LoginScreen';
+import { useRole, useSession } from '@/auth/session';
 import { Spinner } from '@/components/ui/misc';
 import { Toaster } from '@/components/ui/Toaster';
+import type { AppRole } from '@/domain/types';
 import { adapterName, useExternalStorageSync, useStorageWarnings } from '@/queries/hooks';
 import { cn } from '@/utils/cn';
 
@@ -13,18 +16,36 @@ import { cn } from '@/utils/cn';
  * one-handed, where the top of a phone screen is out of thumb reach.
  */
 
-const NAV = [
+const NAV: { to: string; label: string; icon: typeof LayoutDashboard; end: boolean; roles?: AppRole[] }[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/members', label: 'Members', icon: Users, end: false },
   { to: '/events', label: 'Events', icon: CalendarDays, end: false },
   { to: '/trainings', label: 'Trainings', icon: Dumbbell, end: true },
   { to: '/reports', label: 'Reports', icon: BarChart3, end: true },
-  { to: '/settings', label: 'Settings', icon: Settings, end: true },
+  // Settings holds club rules and access control — admin territory.
+  { to: '/settings', label: 'Settings', icon: Settings, end: true, roles: ['admin'] },
 ];
 
+const navFor = (role: AppRole | null) =>
+  NAV.filter((item) => !item.roles || (role && item.roles.includes(role)));
+
 export function AppShell() {
+  const { session, loading } = useSession();
   useExternalStorageSync();
   useStorageWarnings();
+
+  // The gate: no pages mount before we know who is looking. Rendered in
+  // place rather than via a /login route, so OAuth returns to the URL it
+  // left and deep links survive sign-in untouched.
+  if (loading) {
+    return (
+      <div className="grid min-h-dvh place-items-center">
+        <Spinner />
+      </div>
+    );
+  }
+  if (!session) return <LoginScreen />;
+  if (!session.profile) return <UnregisteredScreen />;
 
   return (
     <div className="min-h-dvh sm:flex">
@@ -80,11 +101,13 @@ function OfflineBanner() {
 }
 
 function Sidebar() {
+  const role = useRole();
+  const { session, gateway } = useSession();
   return (
-    <aside className="no-print hidden w-56 shrink-0 border-r border-subtle px-3 py-5 sm:block">
+    <aside className="no-print hidden w-56 shrink-0 flex-col border-r border-subtle px-3 py-5 sm:flex">
       <Wordmark className="mb-6 px-2" />
       <nav aria-label="Main" className="flex flex-col gap-1">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {navFor(role).map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -103,6 +126,22 @@ function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      {/* The mock has no one to sign out; hiding the button beats a no-op. */}
+      {adapterName !== 'mock' && (
+        <div className="mt-auto border-t border-subtle pt-3">
+          <p className="truncate px-3 text-xs text-muted" title={session?.email}>
+            {session?.email}
+          </p>
+          <button
+            type="button"
+            onClick={() => void gateway.signOut()}
+            className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:surface-sunken"
+          >
+            <LogOut className="size-4" />
+            Sign out
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
@@ -115,12 +154,18 @@ function Sidebar() {
  * it out of the accessibility tree entirely. Exactly one is ever present.
  */
 function BottomBar() {
+  const role = useRole();
+  const { gateway } = useSession();
+  const items = navFor(role);
+  // A role that can't see Settings still needs a way out on a phone; the
+  // freed slot becomes Sign out, keeping the bar at six items either way.
+  const showSignOut = adapterName !== 'mock' && items.length < NAV.length;
   return (
     <nav
       aria-label="Main"
       className="no-print surface fixed inset-x-0 bottom-0 z-30 flex border-t border-subtle pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
-      {NAV.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -136,6 +181,16 @@ function BottomBar() {
           {label}
         </NavLink>
       ))}
+      {showSignOut && (
+        <button
+          type="button"
+          onClick={() => void gateway.signOut()}
+          className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium text-muted"
+        >
+          <LogOut className="size-5" />
+          Sign out
+        </button>
+      )}
     </nav>
   );
 }

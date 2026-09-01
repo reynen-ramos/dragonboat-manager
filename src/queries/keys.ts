@@ -46,5 +46,5 @@ export const keys = {
     bySession: (sessionId: string) => ['timeTrialResults', { sessionId }] as const,
   },
   settings: ['settings'] as const,
-  session: ['session'] as const,
+  access: ['access'] as const,
 } as const;

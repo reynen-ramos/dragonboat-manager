@@ -21,6 +21,7 @@ import {
 import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
 import type { SeatingChange } from '@/domain/seating';
 import type {
+  AppRole,
   Assignment,
   AssignmentInput,
   AssignmentPatch,
@@ -502,3 +503,32 @@ export function useStorageWarnings() {
 /** Which storage engine is live — the UI branches on this only for chrome
  *  like the offline banner, never for behaviour. */
 export const adapterName = adapter.name;
+
+// --- Access management (admin) ----------------------------------------------
+
+export const useClubAccess = () =>
+  useQuery({ queryKey: keys.access, queryFn: () => adapter.access.list() });
+
+export const useInviteAccess = () =>
+  useInvalidatingMutation(
+    ({ email, role, memberId }: { email: string; role: AppRole; memberId?: string }) =>
+      adapter.access.invite(email, role, memberId),
+    [keys.access],
+  );
+
+export const useSetAccessRole = () =>
+  useInvalidatingMutation(
+    ({ profileId, role }: { profileId: string; role: AppRole }) =>
+      adapter.access.setRole(profileId, role),
+    [keys.access],
+  );
+
+export const useLinkAccessMember = () =>
+  useInvalidatingMutation(
+    ({ profileId, memberId }: { profileId: string; memberId: string | undefined }) =>
+      adapter.access.linkMember(profileId, memberId),
+    [keys.access],
+  );
+
+export const useRevokeAccess = () =>
+  useInvalidatingMutation((profileId: string) => adapter.access.revoke(profileId), [keys.access]);
