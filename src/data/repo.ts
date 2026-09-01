@@ -150,10 +150,12 @@ export interface DataAdapter {
   readonly name: 'mock' | 'supabase';
   /**
    * Notifies when the database changes underneath this app instance — another
-   * browser tab for localStorage, another device once realtime lands for
-   * Supabase. Returns an unsubscribe function.
+   * browser tab for localStorage, another device over realtime for Supabase.
+   * `collection` names the query-key root that moved ('members', 'events'…);
+   * undefined means "unknown, treat everything as stale". Returns an
+   * unsubscribe function.
    */
-  subscribeToExternalChanges(callback: () => void): () => void;
+  subscribeToExternalChanges(callback: (collection?: string) => void): () => void;
   /** Anything the last read had to skip, drained once for startup toasts. */
   takeReadWarnings(): string[];
   members: Repo<Member>;

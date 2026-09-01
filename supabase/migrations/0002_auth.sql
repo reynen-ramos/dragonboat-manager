@@ -23,11 +23,12 @@ create table club_members (
   club_id text not null references clubs (id) on delete cascade,
   profile_id uuid not null references profiles (id) on delete cascade,
   role text not null default 'paddler' check (role in ('admin', 'coach', 'paddler')),
-  member_id text references members (id) on delete set null,
+  member_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (club_id, profile_id),
-  unique (club_id, member_id)
+  unique (club_id, member_id),
+  foreign key (club_id, member_id) references members (club_id, id) on delete set null
 );
 create trigger club_members_updated_at before update on club_members
   for each row execute function set_updated_at();

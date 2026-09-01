@@ -1,17 +1,15 @@
 -- Dragonboat Manager: initial schema.
 --
--- Multi-club from day one: every row carries club_id (denormalized onto child
--- tables too, so row-level-security predicates never join). The v1 app UI is
--- still one-club-per-user; the club_id machinery is what makes real policies
--- possible when auth lands.
+-- Multi-club from day one: every row carries club_id, and every primary key
+-- is COMPOSITE - (club_id, id) - because row ids are only unique within a
+-- club. Ids are opaque text the app controls: new rows get client-generated
+-- UUIDs, but demo data and imported backups carry readable ids like
+-- 'demo-member-1' that must restore verbatim, and two clubs loading the same
+-- backup must both succeed. Foreign keys are composite for the same reason.
 --
 -- Conventions:
 --  * text + CHECK instead of Postgres enums - checks are painless to alter,
 --    and the app remains the validation source of truth.
---  * ids are text, not uuid: the app's id contract is "opaque string". New
---    rows get client-generated UUIDs, but demo data and imported backups
---    carry readable ids like 'demo-member-1' that must restore verbatim —
---    identity survives across storage engines. `default` is a fallback.
 --  * FK `on delete cascade` is an integrity BACKSTOP. The app deletes
 --    children first itself (it needs the deleted rows back for Undo), so
 --    these cascades never fire in normal operation.
@@ -24,8 +22,8 @@ create table clubs (
 );
 
 create table members (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
   first_name text not null,
   last_name text not null,
   gender text not null check (gender in ('male', 'female', 'other')),
@@ -43,13 +41,13 @@ create table members (
   notes text,
   joined_at date,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id)
 );
-create index members_club_idx on members (club_id);
 
 create table events (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
   name text not null,
   start_date date not null,
   end_date date,
@@ -60,14 +58,14 @@ create table events (
   training_kind text,
   notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id)
 );
-create index events_club_idx on events (club_id);
 
 create table categories (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
-  event_id text not null references events (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
+  event_id text not null,
   boat_size smallint not null check (boat_size in (10, 20)),
   gender_class text not null check (gender_class in ('open', 'mixed', 'women')),
   age_division text check (
@@ -76,30 +74,33 @@ create table categories (
   distance_m integer,
   label text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id),
+  foreign key (club_id, event_id) references events (club_id, id) on delete cascade
 );
-create index categories_club_idx on categories (club_id);
-create index categories_event_idx on categories (event_id);
+create index categories_event_idx on categories (club_id, event_id);
 
 create table crews (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
-  category_id text not null references categories (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
+  category_id text not null,
   name text not null,
   notes text,
   -- A variant of a deleted crew is meaningless, so it goes down with it.
-  variant_of text references crews (id) on delete cascade,
+  variant_of text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id),
+  foreign key (club_id, category_id) references categories (club_id, id) on delete cascade,
+  foreign key (club_id, variant_of) references crews (club_id, id) on delete cascade
 );
-create index crews_club_idx on crews (club_id);
-create index crews_category_idx on crews (category_id);
+create index crews_category_idx on crews (club_id, category_id);
 
 create table assignments (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
-  crew_id text not null references crews (id) on delete cascade,
-  member_id text not null references members (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
+  crew_id text not null,
+  member_id text not null,
   role text not null check (role in ('paddler', 'drummer', 'cox', 'reserve')),
   seat_row smallint,
   seat_side text check (seat_side in ('left', 'right')),
@@ -109,16 +110,18 @@ create table assignments (
   -- database is simply the tier that refuses to store a seatless paddler.
   check ((role = 'paddler') = (seat_row is not null and seat_side is not null)),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id),
+  foreign key (club_id, crew_id) references crews (club_id, id) on delete cascade,
+  foreign key (club_id, member_id) references members (club_id, id) on delete cascade
 );
-create index assignments_club_idx on assignments (club_id);
-create index assignments_crew_idx on assignments (crew_id);
-create index assignments_member_idx on assignments (member_id);
+create index assignments_crew_idx on assignments (club_id, crew_id);
+create index assignments_member_idx on assignments (club_id, member_id);
 
 create table race_entries (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
-  crew_id text not null references crews (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
+  crew_id text not null,
   stage text not null check (stage in ('heat', 'semi', 'final')),
   heat smallint,
   lane smallint,
@@ -127,48 +130,52 @@ create table race_entries (
   -- is always derived from times).
   placement smallint,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id),
+  foreign key (club_id, crew_id) references crews (club_id, id) on delete cascade
 );
-create index race_entries_club_idx on race_entries (club_id);
-create index race_entries_crew_idx on race_entries (crew_id);
+create index race_entries_crew_idx on race_entries (club_id, crew_id);
 
 create table availability (
   club_id text not null references clubs (id) on delete cascade,
-  event_id text not null references events (id) on delete cascade,
-  member_id text not null references members (id) on delete cascade,
+  event_id text not null,
+  member_id text not null,
   status text not null check (status in ('in', 'out', 'maybe')),
   note text,
   updated_at timestamptz not null default now(),
-  primary key (event_id, member_id)
+  primary key (club_id, event_id, member_id),
+  foreign key (club_id, event_id) references events (club_id, id) on delete cascade,
+  foreign key (club_id, member_id) references members (club_id, id) on delete cascade
 );
-create index availability_club_idx on availability (club_id);
-create index availability_member_idx on availability (member_id);
+create index availability_member_idx on availability (club_id, member_id);
 
 create table time_trial_sessions (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
   date date not null,
   name text,
   distance_m integer not null,
   discipline text,
   notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id)
 );
-create index time_trial_sessions_club_idx on time_trial_sessions (club_id);
 
 create table time_trial_results (
-  id text primary key default gen_random_uuid()::text,
   club_id text not null references clubs (id) on delete cascade,
-  session_id text not null references time_trial_sessions (id) on delete cascade,
-  member_id text not null references members (id) on delete cascade,
+  id text not null default gen_random_uuid()::text,
+  session_id text not null,
+  member_id text not null,
   time_ms integer,
   note text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (club_id, id),
+  foreign key (club_id, session_id) references time_trial_sessions (club_id, id) on delete cascade,
+  foreign key (club_id, member_id) references members (club_id, id) on delete cascade
 );
-create index time_trial_results_club_idx on time_trial_results (club_id);
-create index time_trial_results_session_idx on time_trial_results (session_id);
+create index time_trial_results_session_idx on time_trial_results (club_id, session_id);
 
 -- One settings row per club; the app migrates the blob's shape client-side,
 -- exactly as it does for the localStorage snapshot.

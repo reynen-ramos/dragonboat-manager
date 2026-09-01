@@ -107,13 +107,13 @@ if (url && serviceKey && anonKey) {
     it('a paddler answers their own sign-up and nobody else’s', async () => {
       const own = await paddler.from('availability').upsert(
         { club_id: clubId, event_id: eventId, member_id: anaId, status: 'in' },
-        { onConflict: 'event_id,member_id' },
+        { onConflict: 'club_id,event_id,member_id' },
       );
       expect(own.error).toBeNull();
 
       const other = await paddler.from('availability').upsert(
         { club_id: clubId, event_id: eventId, member_id: benId, status: 'out' },
-        { onConflict: 'event_id,member_id' },
+        { onConflict: 'club_id,event_id,member_id' },
       );
       expect(other.error).not.toBeNull(); // the with-check policy refuses
 

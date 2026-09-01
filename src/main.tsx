@@ -17,12 +17,12 @@ const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      // One minute, not zero: with a network backend, staleTime 0 plus
-      // focus-refetch re-reads roughly ten whole tables on every tab switch.
-      // Writes stay instantly fresh regardless — every mutation awaits its
-      // invalidations — and cross-tab changes invalidate explicitly, so the
-      // stale-seat-map danger this used to guard against is already covered.
-      staleTime: 60_000,
+      // Five minutes: invalidation is push-driven now — every mutation awaits
+      // its invalidations, cross-tab changes arrive via storage events, and
+      // cross-device changes via realtime — so time-based staleness is only
+      // the backstop for a dropped connection. Focus-refetch stays as the
+      // recovery path, bounded by this.
+      staleTime: 300_000,
       retry: false,
       refetchOnWindowFocus: true,
     },

@@ -38,6 +38,7 @@ import type {
   TimeTrialSession,
 } from '@/domain/types';
 import { keys } from './keys';
+import { patchAssignmentsCache, patchAvailabilityCache } from './optimistic';
 
 /**
  * The data API every screen uses.
@@ -351,12 +352,38 @@ export const useBulkUpdateAssignments = () =>
     [keys.assignments.all],
   );
 
-/** Applies a set of seating changes as one write, then one refetch. */
-export const useApplySeatingChanges = () =>
-  useInvalidatingMutation(
-    (changes: SeatingChange[]) => adapter.assignments.applyChanges(changes),
-    [keys.assignments.all],
-  );
+/**
+ * Applies a set of seating changes as one write, painted optimistically —
+ * a seat drop must land under the finger, not a network round trip later.
+ *
+ * The optimistic layer sits strictly on top of the awaited-invalidation
+ * contract: onSuccess still RETURNS the invalidation, so a caller that
+ * awaits the write (the lineup undo stack) reads refetched truth, exactly
+ * as with useInvalidatingMutation. Failure restores the snapshots and the
+ * central mutation toast reports it.
+ */
+export const useApplySeatingChanges = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: SeatingChange[]) => adapter.assignments.applyChanges(changes),
+    onMutate: async (changes) => {
+      await queryClient.cancelQueries({ queryKey: keys.assignments.all });
+      const snapshots = queryClient.getQueriesData<Assignment[]>({
+        queryKey: keys.assignments.all,
+      });
+      for (const [key, cached] of snapshots) {
+        queryClient.setQueryData(key, patchAssignmentsCache(key, cached, changes));
+      }
+      return { snapshots };
+    },
+    onError: (_error, _changes, context) => {
+      for (const [key, cached] of context?.snapshots ?? []) {
+        queryClient.setQueryData(key, cached);
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.assignments.all }),
+  });
+};
 
 /** Restores a crew's lineup verbatim — how undo and redo are applied. */
 export const useReplaceCrewLineup = () =>
@@ -366,10 +393,29 @@ export const useReplaceCrewLineup = () =>
     [keys.assignments.all],
   );
 
-export const useSetAvailability = () =>
-  useInvalidatingMutation((entries: Availability[]) => adapter.availability.setMany(entries), [
-    keys.availability.all,
-  ]);
+/** Sign-up answers paint on tap; see useApplySeatingChanges for the shape. */
+export const useSetAvailability = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (entries: Availability[]) => adapter.availability.setMany(entries),
+    onMutate: async (entries) => {
+      await queryClient.cancelQueries({ queryKey: keys.availability.all });
+      const snapshots = queryClient.getQueriesData<Availability[]>({
+        queryKey: keys.availability.all,
+      });
+      for (const [key, cached] of snapshots) {
+        queryClient.setQueryData(key, patchAvailabilityCache(key, cached, entries));
+      }
+      return { snapshots };
+    },
+    onError: (_error, _entries, context) => {
+      for (const [key, cached] of context?.snapshots ?? []) {
+        queryClient.setQueryData(key, cached);
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.availability.all }),
+  });
+};
 
 /** Enters a whole race — every crew, every lane — as one write. */
 export const useCreateRaceEntries = () =>
@@ -488,7 +534,14 @@ export const exportSnapshot = () => adapter.admin.exportSnapshot();
 export function useExternalStorageSync() {
   const queryClient = useQueryClient();
   useEffect(
-    () => adapter.subscribeToExternalChanges(() => void queryClient.invalidateQueries()),
+    () =>
+      adapter.subscribeToExternalChanges((collection) => {
+        // A named collection invalidates just its key root (['members'] prefix
+        // matches every filtered variant); no name means the whole cache is
+        // suspect — the storage-event path, or an unmapped table.
+        if (collection) void queryClient.invalidateQueries({ queryKey: [collection] });
+        else void queryClient.invalidateQueries();
+      }),
     [queryClient],
   );
 }

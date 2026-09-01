@@ -76,6 +76,18 @@ Then in the project's Auth settings:
 Note: a magic link opened on a phone lands in the browser, not an installed
 PWA — installed-app users have a smoother time with Google sign-in.
 
+## Realtime
+
+Open devices stay in sync live: the adapter holds one channel over the
+schema, and each row change invalidates just the collection that moved (with
+a short debounce, so a 20-seat fill refetches once, not twenty times). The
+channel rejoins on every auth transition — a realtime subscription's
+row-security filter is fixed at join time — and heals itself with backoff if
+the server drops it. Sync is sub-second in steady state; right after a
+whole-snapshot import (thousands of rows) the event stream can lag for a
+minute or two while the server works through the backlog — a once-per-club
+cost, and focus-refetch covers the gap.
+
 ## Migrations
 
 Hand-authored SQL in `migrations/`, applied in filename order. The snapshot
