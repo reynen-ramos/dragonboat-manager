@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, CloudOff, Dumbbell, LayoutDashboard, LogOut, Settings, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, CircleUser, CloudOff, Dumbbell, LayoutDashboard, LogOut, Settings, Users } from 'lucide-react';
 import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { LoginScreen, UnregisteredScreen } from '@/auth/LoginScreen';
@@ -17,12 +17,15 @@ import { cn } from '@/utils/cn';
  */
 
 const NAV: { to: string; label: string; icon: typeof LayoutDashboard; end: boolean; roles?: AppRole[] }[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/members', label: 'Members', icon: Users, end: false },
+  // A paddler's world is their own page plus the club calendar; the
+  // management surfaces are staff's. Settings — rules and access — is
+  // admin territory alone.
+  { to: '/me', label: 'My Page', icon: CircleUser, end: true, roles: ['paddler'] },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, roles: ['admin', 'coach'] },
+  { to: '/members', label: 'Members', icon: Users, end: false, roles: ['admin', 'coach'] },
   { to: '/events', label: 'Events', icon: CalendarDays, end: false },
   { to: '/trainings', label: 'Trainings', icon: Dumbbell, end: true },
-  { to: '/reports', label: 'Reports', icon: BarChart3, end: true },
-  // Settings holds club rules and access control — admin territory.
+  { to: '/reports', label: 'Reports', icon: BarChart3, end: true, roles: ['admin', 'coach'] },
   { to: '/settings', label: 'Settings', icon: Settings, end: true, roles: ['admin'] },
 ];
 

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SessionProvider } from '@/auth/SessionProvider';
 import { invalidateCache } from '@/data/mock/db';
 import { mockAdapter } from '@/data/mock/index';
 import type { Member } from '@/domain/types';
@@ -29,12 +30,15 @@ const renderPage = (sessionId: string) => {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/time-trials/${sessionId}`]}>
-        <Routes>
-          <Route path="/time-trials/:sessionId" element={<TimeTrialSessionPage />} />
-          <Route path="/time-trials" element={<p>back at the list</p>} />
-        </Routes>
-      </MemoryRouter>
+      {/* The mock gateway signs in as an admin, so the sheet stays editable. */}
+      <SessionProvider>
+        <MemoryRouter initialEntries={[`/time-trials/${sessionId}`]}>
+          <Routes>
+            <Route path="/time-trials/:sessionId" element={<TimeTrialSessionPage />} />
+            <Route path="/time-trials" element={<p>back at the list</p>} />
+          </Routes>
+        </MemoryRouter>
+      </SessionProvider>
     </QueryClientProvider>,
   );
 };

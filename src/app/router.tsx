@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter, redirect } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { RequireRole, RoleHome } from './guards';
 import { RouteError } from './RouteError';
 
 /**
@@ -36,6 +37,7 @@ const TimeTrialSessionPage = page(
 );
 const ReportsPage = page(() => import('@/pages/ReportsPage'), (m) => m.ReportsPage);
 const SettingsPage = page(() => import('@/pages/SettingsPage'), (m) => m.SettingsPage);
+const MyPage = page(() => import('@/pages/MyPage'), (m) => m.MyPage);
 const NotFoundPage = page(() => import('@/pages/NotFoundPage'), (m) => m.NotFoundPage);
 
 export const router = createBrowserRouter([
@@ -46,8 +48,16 @@ export const router = createBrowserRouter([
     // Router's default screen, which looks indistinguishable from data loss.
     errorElement: <RouteError />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'members', element: <MembersPage /> },
+      { index: true, element: <RoleHome staff={<DashboardPage />} /> },
+      { path: 'me', element: <MyPage /> },
+      {
+        path: 'members',
+        element: (
+          <RequireRole roles={['admin', 'coach']}>
+            <MembersPage />
+          </RequireRole>
+        ),
+      },
       { path: 'members/:memberId', element: <MemberDetailPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/:eventId', element: <EventDetailPage /> },
@@ -62,8 +72,22 @@ export const router = createBrowserRouter([
       { path: 'trainings', element: <TrainingsPage /> },
       { path: 'time-trials', element: <TimeTrialsPage /> },
       { path: 'time-trials/:sessionId', element: <TimeTrialSessionPage /> },
-      { path: 'reports', element: <ReportsPage /> },
-      { path: 'settings', element: <SettingsPage /> },
+      {
+        path: 'reports',
+        element: (
+          <RequireRole roles={['admin', 'coach']}>
+            <ReportsPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <RequireRole roles={['admin']}>
+            <SettingsPage />
+          </RequireRole>
+        ),
+      },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

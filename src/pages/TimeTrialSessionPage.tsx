@@ -1,6 +1,7 @@
 import { Download, Plus, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useCanManage } from '@/auth/session';
 import { BackLink } from '@/components/ui/BackLink';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -37,6 +38,7 @@ import { compareMembers } from '@/utils/memberSort';
  */
 export function TimeTrialSessionPage() {
   const { sessionId } = useParams();
+  const canManage = useCanManage();
   const session = useTimeTrialSession(sessionId);
   const results = useTimeTrialResults(sessionId);
   const members = useMembers();
@@ -117,15 +119,19 @@ export function TimeTrialSessionPage() {
           .join(' · ')}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setAdding((a) => !a)}>
-              <UserPlus /> Add paddlers
-            </Button>
+            {canManage && (
+              <Button onClick={() => setAdding((a) => !a)}>
+                <UserPlus /> Add paddlers
+              </Button>
+            )}
             <Button onClick={exportCsv} disabled={sheet.length === 0}>
               <Download /> CSV
             </Button>
-            <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
-              <Trash2 /> Delete
-            </Button>
+            {canManage && (
+              <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+                <Trash2 /> Delete
+              </Button>
+            )}
           </div>
         }
       />
@@ -157,6 +163,7 @@ export function TimeTrialSessionPage() {
                   key={result.id}
                   ranked={rankedByResultId.get(result.id)!}
                   member={memberById.get(result.memberId)}
+                  readOnly={!canManage}
                 />
               ))}
             </ul>
@@ -249,9 +256,11 @@ function AddPaddlersPanel({
 function SheetRow({
   ranked,
   member,
+  readOnly = false,
 }: {
   ranked: RankedTime<TimeTrialResult>;
   member: Member | undefined;
+  readOnly?: boolean;
 }) {
   const updateResult = useUpdateTimeTrialResult();
   const deleteResult = useDeleteTimeTrialResult();
@@ -317,27 +326,35 @@ function SheetRow({
         {formatDelta(deltaMs)}
       </span>
 
-      <Input
-        className={cn('tabular h-9 w-28 shrink-0 text-right text-sm', invalid && 'border-red-600')}
-        placeholder="1:05.42"
-        inputMode="decimal"
-        aria-label={`Time for ${name}`}
-        aria-invalid={invalid}
-        value={draft}
-        onFocus={() => setEditing(true)}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-      />
+      {readOnly ? (
+        <span className="tabular w-28 shrink-0 text-right text-sm">
+          {row.timeMs != null ? formatRaceTime(row.timeMs) : '—'}
+        </span>
+      ) : (
+        <>
+          <Input
+            className={cn('tabular h-9 w-28 shrink-0 text-right text-sm', invalid && 'border-red-600')}
+            placeholder="1:05.42"
+            inputMode="decimal"
+            aria-label={`Time for ${name}`}
+            aria-invalid={invalid}
+            value={draft}
+            onFocus={() => setEditing(true)}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
 
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label={`Remove ${name} from this session`}
-        onClick={() => deleteResult.mutate(row.id)}
-      >
-        <Trash2 />
-      </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Remove ${name} from this session`}
+            onClick={() => deleteResult.mutate(row.id)}
+          >
+            <Trash2 />
+          </Button>
+        </>
+      )}
     </li>
   );
 }

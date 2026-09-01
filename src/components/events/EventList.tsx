@@ -12,7 +12,7 @@ import { categoryName, pluralise } from '@/utils/format';
 /** List building blocks shared by the Events and Trainings sections. */
 
 /** The month calendar, always showing the whole club week — both sections offer it. */
-export function FullCalendar(props: { events: ClubEvent[]; onPickDay: (iso: string) => void }) {
+export function FullCalendar(props: { events: ClubEvent[]; onPickDay?: (iso: string) => void }) {
   const settings = useSettings();
   return <EventsCalendar {...props} eventTypes={settings.eventTypes} />;
 }

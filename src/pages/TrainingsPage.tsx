@@ -10,6 +10,7 @@ import { addDays, startOfWeek } from '@/domain/calendar';
 import { formatDate, todayIso } from '@/domain/dates';
 import { eventBase, trainingKindLabel } from '@/domain/eventTypes';
 import type { ClubEvent } from '@/domain/types';
+import { useCanManage } from '@/auth/session';
 import { useEvents, useSettings } from '@/queries/hooks';
 
 type View = 'list' | 'calendar';
@@ -22,6 +23,7 @@ type View = 'list' | 'calendar';
  * is read at once.
  */
 export function TrainingsPage() {
+  const canManage = useCanManage();
   const events = useEvents();
   const settings = useSettings();
   const [view, setView] = useState<View>('list');
@@ -63,9 +65,11 @@ export function TrainingsPage() {
                 <Timer /> Time trials
               </Link>
             </Button>
-            <Button variant="primary" onClick={() => newTraining()}>
-              <Plus /> New training
-            </Button>
+            {canManage && (
+              <Button variant="primary" onClick={() => newTraining()}>
+                <Plus /> New training
+              </Button>
+            )}
           </div>
         }
       />
@@ -76,9 +80,11 @@ export function TrainingsPage() {
           title="No trainings yet"
           description="Schedule a water or land session — sign-ups and attendance follow from there."
           action={
-            <Button variant="primary" onClick={() => newTraining()}>
-              <Plus /> New training
-            </Button>
+            canManage ? (
+              <Button variant="primary" onClick={() => newTraining()}>
+                <Plus /> New training
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -97,7 +103,7 @@ export function TrainingsPage() {
           />
 
           {view === 'calendar' ? (
-            <FullCalendar events={all} onPickDay={(iso) => newTraining(iso)} />
+            <FullCalendar events={all} onPickDay={canManage ? (iso) => newTraining(iso) : undefined} />
           ) : (
             <div className="flex flex-col gap-8">
               <TrainingGroup title="This week" sessions={thisWeek} emptyCopy="Nothing more this week." />

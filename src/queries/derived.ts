@@ -9,6 +9,7 @@ import type {
   Member,
 } from '@/domain/types';
 import { buildMemberHistory } from '@/domain/memberHistory';
+import { buildMemberResults } from '@/domain/memberResults';
 import { todayIso } from '@/domain/dates';
 import { validateCrew, type Issue } from '@/domain/validation';
 import {
@@ -236,6 +237,32 @@ export function useMemberHistory(memberId: string | undefined) {
     refetch: () => {
       for (const q of queries) void q.refetch();
     },
+  };
+}
+
+/** A member's race results, ranked against each race's whole field. */
+export function useMemberResults(memberId: string | undefined) {
+  const events = useEvents();
+  const categories = useAllCategories();
+  const crews = useAllCrews();
+  const assignments = useMemberAssignments(memberId);
+  const raceEntries = useAllRaceEntries();
+
+  const queries = [events, categories, crews, assignments, raceEntries];
+  return {
+    rows: useMemo(
+      () =>
+        buildMemberResults({
+          assignments: assignments.data ?? [],
+          events: events.data ?? [],
+          categories: categories.data ?? [],
+          crews: crews.data ?? [],
+          raceEntries: raceEntries.data ?? [],
+        }),
+      [assignments.data, events.data, categories.data, crews.data, raceEntries.data],
+    ),
+    isLoading: queries.some((q) => q.isLoading),
+    isError: queries.some((q) => q.isError),
   };
 }
 

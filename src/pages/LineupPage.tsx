@@ -16,6 +16,7 @@ import {
 import { Printer, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useCanManage } from '@/auth/session';
 import { BalancePanel, IssuesPanel, ReservesStrip } from '@/components/boat/BalancePanel';
 import { BoatView, type SeatedOccupant } from '@/components/boat/BoatView';
 import { FillBoatDialog } from '@/components/boat/FillBoatDialog';
@@ -54,6 +55,9 @@ import { useLineupHistory } from '@/stores/lineupHistory';
 import { categoryName } from '@/utils/format';
 
 const MOBILE_TABS = ['roster', 'boat', 'checks'] as const;
+
+/** Stable empty sensor list — the read-only boat, where no drag can start. */
+const NO_SENSORS: ReturnType<typeof useSensors> = [];
 type MobileTab = (typeof MOBILE_TABS)[number];
 
 /**
@@ -96,6 +100,7 @@ function describeTarget(drop: DropData | undefined, verb: string): string {
 
 export function LineupPage() {
   const { eventId, crewId } = useParams();
+  const canManage = useCanManage();
   const crew = useCrew(crewId);
   const category = useCategory(crew.data?.categoryId);
   const event = useEvent(eventId);
@@ -245,13 +250,16 @@ export function LineupPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [undo, redo]);
 
-  const sensors = useSensors(
+  const allSensors = useSensors(
     // A small distance threshold keeps a tap from registering as a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
     // The custom getter moves seat-to-seat; the default nudges 25px per press.
     useSensor(KeyboardSensor, { coordinateGetter: boatCoordinateGetter }),
   );
+  // A paddler reads the boat; only staff move people. No sensors means no
+  // drag can even start, which beats letting a drop fail on the backend.
+  const sensors = canManage ? allSensors : NO_SENSORS;
 
   // `event` belongs in both guards: it is read below, and leaving it out fell
   // through to "That crew no longer exists" while it was still loading.
@@ -305,13 +313,13 @@ export function LineupPage() {
       availability={availability}
       doubleBookedIds={doubleBookedIds}
       selectedMemberId={selectedMemberId}
-      onSelectMember={setSelectedMemberId}
+      onSelectMember={canManage ? setSelectedMemberId : () => {}}
     />
   );
 
   const checksPanel = (
     <div className="flex flex-col gap-3">
-      {crewId && category.data && members.data && (
+      {canManage && crewId && category.data && members.data && (
         <div className="flex justify-end">
           <FillBoatDialog
             membersById={membersById}
@@ -335,7 +343,7 @@ export function LineupPage() {
         <BalancePanel
           balance={balance}
           onAutoBalance={autoBalance}
-          autoBalanceDisabled={lineup.seated.length === 0}
+          autoBalanceDisabled={!canManage || lineup.seated.length === 0}
         />
       )}
       <IssuesPanel issues={issues} />
@@ -360,12 +368,16 @@ export function LineupPage() {
           {event.data.name}
         </BackLink>
         <div className="flex gap-1">
-          <Button size="icon" variant="ghost" onClick={undo} disabled={!canUndo} aria-label="Undo">
-            <Undo2 />
-          </Button>
-          <Button size="icon" variant="ghost" onClick={redo} disabled={!canRedo} aria-label="Redo">
-            <Redo2 />
-          </Button>
+          {canManage && (
+            <>
+              <Button size="icon" variant="ghost" onClick={undo} disabled={!canUndo} aria-label="Undo">
+                <Undo2 />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={redo} disabled={!canRedo} aria-label="Redo">
+                <Redo2 />
+              </Button>
+            </>
+          )}
           <Button size="sm" onClick={() => window.print()}>
             <Printer /> Crew sheet
           </Button>
@@ -463,13 +475,16 @@ export function LineupPage() {
               }
               cox={lineup.cox && occupantFor(lineup.cox.assignment, lineup.cox.member)}
               selectedMemberId={selectedMemberId}
-              onSeatTap={(seat) => placeSelected({ kind: 'seat', seat })}
-              onRoleTap={(role) => placeSelected({ kind: 'role', role })}
-              onTogglePin={(assignment) =>
-                updateAssignment.mutate({
-                  id: assignment.id,
-                  patch: { pinned: !assignment.pinned },
-                })
+              onSeatTap={canManage ? (seat) => placeSelected({ kind: 'seat', seat }) : undefined}
+              onRoleTap={canManage ? (role) => placeSelected({ kind: 'role', role }) : undefined}
+              onTogglePin={
+                canManage
+                  ? (assignment) =>
+                      updateAssignment.mutate({
+                        id: assignment.id,
+                        patch: { pinned: !assignment.pinned },
+                      })
+                  : undefined
               }
             />
           </Card>
@@ -480,7 +495,11 @@ export function LineupPage() {
                 assignmentId: assignment.id,
                 member,
               }))}
-              onRemove={(assignmentId) => void applyChanges([{ op: 'delete', id: assignmentId }])}
+              onRemove={
+                canManage
+                  ? (assignmentId) => void applyChanges([{ op: 'delete', id: assignmentId }])
+                  : undefined
+              }
               selectedMemberName={
                 selectedMemberId ? membersById.get(selectedMemberId)?.firstName : undefined
               }

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SessionProvider } from '@/auth/SessionProvider';
 import { invalidateCache } from '@/data/mock/db';
 import { mockAdapter } from '@/data/mock/index';
 import { addDays, startOfWeek } from '@/domain/calendar';
@@ -22,9 +23,11 @@ const renderPage = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <TrainingsPage />
-      </MemoryRouter>
+      <SessionProvider>
+        <MemoryRouter>
+          <TrainingsPage />
+        </MemoryRouter>
+      </SessionProvider>
     </QueryClientProvider>,
   );
 };

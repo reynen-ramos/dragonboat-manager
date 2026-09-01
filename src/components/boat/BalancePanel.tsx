@@ -212,7 +212,8 @@ export function ReservesStrip({
   onTap,
 }: {
   reserves: { assignmentId: string; member: Member }[];
-  onRemove: (assignmentId: string) => void;
+  /** Absent in read-only views: the strip shows the reserves, removes nothing. */
+  onRemove?: (assignmentId: string) => void;
   /** Set while a paddler is selected for tap-to-place. */
   selectedMemberName?: string;
   onTap?: () => void;
@@ -254,14 +255,16 @@ export function ReservesStrip({
               className="surface flex items-center gap-1 rounded-lg border border-subtle px-1.5 py-1"
             >
               <PaddlerChip member={member} compact />
-              <button
-                type="button"
-                onClick={() => onRemove(assignmentId)}
-                className="px-1 text-xs text-muted hover:text-red-600"
-                aria-label={`Remove ${member.firstName} from reserves`}
-              >
-                ×
-              </button>
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(assignmentId)}
+                  className="px-1 text-xs text-muted hover:text-red-600"
+                  aria-label={`Remove ${member.firstName} from reserves`}
+                >
+                  ×
+                </button>
+              )}
             </li>
           ))}
         </ul>

@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeftRight, CheckCircle2, ClipboardCheck, Copy, GitCompareArrows, MoreVertical, Pencil, Plus, Trash2, Trophy, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCanManage } from '@/auth/session';
 import { CategoryForm } from '@/components/events/CategoryForm';
 import { EventForm } from '@/components/events/EventForm';
 import { LineupDiffDialog } from '@/components/events/LineupDiffDialog';
@@ -37,6 +38,7 @@ export function EventDetailPage() {
   const undoableDelete = useUndoableDelete();
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const canManage = useCanManage();
   const event = useEvent(eventId);
   const categories = useCategories(eventId);
   const settings = useSettings();
@@ -85,12 +87,16 @@ export function EventDetailPage() {
                 </Link>
               </Button>
             )}
-            <Button onClick={() => setEditing(true)}>
-              <Pencil /> Edit
-            </Button>
-            <Button variant="primary" onClick={() => setAddingCategory(true)}>
-              <Plus /> Add category
-            </Button>
+            {canManage && (
+              <>
+                <Button onClick={() => setEditing(true)}>
+                  <Pencil /> Edit
+                </Button>
+                <Button variant="primary" onClick={() => setAddingCategory(true)}>
+                  <Plus /> Add category
+                </Button>
+              </>
+            )}
           </>
         }
       />
@@ -107,9 +113,11 @@ export function EventDetailPage() {
           title="No categories yet"
           description="Add the crew classes you are entering — a 20s Mixed, a 10s Women's, and so on."
           action={
-            <Button variant="primary" onClick={() => setAddingCategory(true)}>
-              <Plus /> Add category
-            </Button>
+            canManage ? (
+              <Button variant="primary" onClick={() => setAddingCategory(true)}>
+                <Plus /> Add category
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -120,11 +128,13 @@ export function EventDetailPage() {
         </div>
       )}
 
-      <div className="mt-10 border-t border-subtle pt-5">
-        <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
-          <Trash2 /> Delete event
-        </Button>
-      </div>
+      {canManage && (
+        <div className="mt-10 border-t border-subtle pt-5">
+          <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
+            <Trash2 /> Delete event
+          </Button>
+        </div>
+      )}
 
       {addingCategory && (
         <CategoryForm
@@ -201,6 +211,7 @@ function AvailabilitySummary({ eventId }: { eventId: string }) {
 }
 
 function CategorySection({ category, event }: { category: Category; event: ClubEvent }) {
+  const canManage = useCanManage();
   const crews = useCrews(category.id);
   const createCrew = useCreateCrew();
   const deleteCategory = useDeleteCategory();
@@ -228,28 +239,36 @@ function CategorySection({ category, event }: { category: Category; event: ClubE
             <Badge tone="neutral">{pluralise(list.length - primaries.length, 'plan')}</Badge>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={addCrew} disabled={createCrew.isPending}>
-            <Plus /> Add crew
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={`Delete ${categoryName(category)}`}
-            onClick={() => setConfirmingDelete(true)}
-          >
-            <Trash2 />
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex gap-2">
+            <Button size="sm" onClick={addCrew} disabled={createCrew.isPending}>
+              <Plus /> Add crew
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={`Delete ${categoryName(category)}`}
+              onClick={() => setConfirmingDelete(true)}
+            >
+              <Trash2 />
+            </Button>
+          </div>
+        )}
       </div>
 
       {primaries.length === 0 ? (
-        <button
-          onClick={addCrew}
-          className="w-full rounded-xl border border-dashed border-subtle px-4 py-6 text-sm text-muted hover:surface-sunken"
-        >
-          No crews yet — add one to start seating paddlers.
-        </button>
+        canManage ? (
+          <button
+            onClick={addCrew}
+            className="w-full rounded-xl border border-dashed border-subtle px-4 py-6 text-sm text-muted hover:surface-sunken"
+          >
+            No crews yet — add one to start seating paddlers.
+          </button>
+        ) : (
+          <p className="rounded-xl border border-dashed border-subtle px-4 py-6 text-center text-sm text-muted">
+            No crews yet.
+          </p>
+        )
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           {primaries.map((crew) => (
@@ -295,6 +314,7 @@ function CrewCard({
   /** Set when this card is an alternative plan for another crew. */
   primary?: Crew;
 }) {
+  const canManage = useCanManage();
   const lineup = useCrewLineup(crew.id);
   const issues = useCrewIssues(crew.id, category, event.id, event.startDate);
   const duplicate = useDuplicateCrew();
@@ -348,16 +368,18 @@ function CrewCard({
         </div>
       </Link>
 
-      <div className="absolute right-2 top-2.5">
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label={`Actions for ${crew.name}`}
-          onClick={() => setMenuOpen(true)}
-        >
-          <MoreVertical />
-        </Button>
-      </div>
+      {canManage && (
+        <div className="absolute right-2 top-2.5">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Actions for ${crew.name}`}
+            onClick={() => setMenuOpen(true)}
+          >
+            <MoreVertical />
+          </Button>
+        </div>
+      )}
 
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
         <DialogContent
