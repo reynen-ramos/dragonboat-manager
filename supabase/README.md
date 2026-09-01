@@ -1,22 +1,31 @@
 # Supabase backend
 
-The Postgres schema behind the `supabase` data adapter. Multi-club from day
-one (every row carries `club_id`), but the app currently pins itself to one
-club — real per-club access control arrives with the auth migration.
+The Postgres schema behind the `supabase` data adapter. Multi-club (every row
+carries `club_id`), with sign-in and per-club roles: identities live in
+`profiles`, a person's role in a club lives in `club_members`, and row-level
+security enforces the matrix — staff write, members read, paddlers additionally
+write only their own availability row and see clubmates through the
+`member_directory` view (contact details, weight, birth dates, and notes
+hidden). The anon key alone can read nothing.
 
-> **⚠️ Staging only.** Until the auth migration replaces the temporary open
-> row-level-security policies in `migrations/0001_init.sql`, anyone holding
-> the anon key can read and write everything. Point the adapter only at a
-> local stack or a disposable staging project. Never real club data.
+## How access works
 
-## Local stack (development and contract tests)
+- **Founding**: a signed-in user with no club creates one in the app
+  (`create_club` — they become its admin).
+- **Inviting**: an admin registers an email + role (+ linked roster member) in
+  Settings → Access. No email is sent; the invitee just signs in with that
+  address (magic link or Google) and a database trigger connects their login
+  on arrival.
+- **Paddler privacy**: paddlers read the roster through `member_directory`,
+  which nulls private columns on every row but their own.
+
+## Local stack (development and tests)
 
 Requires Docker and the [Supabase CLI](https://supabase.com/docs/guides/cli)
 (`scoop install supabase` or `npm i -g supabase`).
 
 ```sh
-supabase init      # once; keeps this migrations/ directory
-supabase start     # boots Postgres + APIs in Docker; prints URL and keys
+supabase start     # boots Postgres + auth + APIs in Docker; prints URL and keys
 supabase db reset  # (re)applies every migration to a clean database
 ```
 
@@ -28,16 +37,28 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<anon key from `supabase status`>
 ```
 
-Run the adapter contract suite against it (same spec the mock passes on every
-CI run):
+Local magic-link emails land in Mailpit (`http://127.0.0.1:54324`), not a real
+inbox.
+
+### Test suites (both gated; skipped when the variables are unset)
 
 ```sh
+# Storage semantics — the same contract the mock passes on every CI run.
+# Service key: this suite tests CRUD, not access control.
 SUPABASE_TEST_URL=http://127.0.0.1:54321 \
-SUPABASE_TEST_ANON_KEY=<anon key> \
+SUPABASE_TEST_KEY=<service_role key> \
 npx vitest run src/data/supabase/contract.test.ts
+
+# The policy matrix, with real signed-in admin/paddler/anon users.
+SUPABASE_TEST_URL=http://127.0.0.1:54321 \
+SUPABASE_TEST_KEY=<service_role key> \
+SUPABASE_TEST_ANON_KEY=<anon key> \
+npx vitest run src/data/supabase/rls.test.ts
 ```
 
-## Cloud project (staging)
+Both wipe or write data freely — never point them at a database you love.
+
+## Cloud project
 
 Create a project at supabase.com, then:
 
@@ -46,7 +67,14 @@ supabase link --project-ref <ref>
 supabase db push   # applies migrations/
 ```
 
-Set the same three `VITE_*` variables to the project's URL and anon key.
+Then in the project's Auth settings:
+- add the app's URL (and `http://localhost:5173` for development) to the
+  redirect allowlist and set the Site URL;
+- enable the Google provider if the club wants "Continue with Google"
+  (magic links work with no extra setup).
+
+Note: a magic link opened on a phone lands in the browser, not an installed
+PWA — installed-app users have a smoother time with Google sign-in.
 
 ## Migrations
 

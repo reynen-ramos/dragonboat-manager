@@ -12,6 +12,7 @@ import type {
 import { newId } from '@/utils/ids';
 import { migrateSnapshot, UnreadableSnapshotError } from '../migrate';
 import type {
+  AccessRepo,
   AdminRepo,
   AssignmentRepo,
   AuthGateway,
@@ -64,11 +65,53 @@ const chunked = <T>(rows: T[]): T[][] => {
 export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
   const client: SupabaseClient = createClient(config.url, config.anonKey);
 
-  // The active club, resolved once. A failed resolution is not cached, so a
-  // transient network error at startup doesn't wedge the app until reload.
+  /** The signed-in user's profile row + first club membership, if any. */
+  const fetchStanding = async (): Promise<
+    { profileId: string; email: string; clubId: string; role: Profile['role']; memberId?: string } | undefined
+  > => {
+    const { data } = await client.auth.getUser();
+    if (!data.user) return undefined;
+    const profile = unwrap(
+      await client.from('profiles').select('id, email').eq('user_id', data.user.id).maybeSingle(),
+    ) as { id: string; email: string } | null;
+    if (!profile) return undefined;
+    const membership = unwrap(
+      await client
+        .from('club_members')
+        .select('club_id, role, member_id')
+        .eq('profile_id', profile.id)
+        .order('created_at')
+        .limit(1)
+        .maybeSingle(),
+    ) as { club_id: string; role: Profile['role']; member_id: string | null } | null;
+    if (!membership) return undefined;
+    return {
+      profileId: profile.id,
+      email: profile.email,
+      clubId: membership.club_id,
+      role: membership.role,
+      memberId: membership.member_id ?? undefined,
+    };
+  };
+
+  // The active club, resolved once per identity. A failed resolution is not
+  // cached, so a transient network error doesn't wedge the app until reload;
+  // sign-in and sign-out drop the cache because they change the answer.
   let clubPromise: Promise<string> | undefined;
   const clubId = (): Promise<string> => {
     clubPromise ??= (async () => {
+      const standing = await fetchStanding();
+      if (standing) return standing.clubId;
+
+      const { data } = await client.auth.getSession();
+      if (data.session) {
+        // Signed in but not registered anywhere — the shell shows the
+        // create-a-club screen instead of pages, so nothing should get here.
+        throw new Error('This login is not registered with a club yet.');
+      }
+      // No auth session at all: only a key that bypasses row security gets
+      // data access without one (the contract suite's service key, or a
+      // staging project still on the pre-auth policies). Pin the first club.
       const existing = unwrap(
         await client.from('clubs').select('id').order('created_at').limit(1),
       ) as { id: string }[];
@@ -83,8 +126,13 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
     });
     return clubPromise;
   };
+  client.auth.onAuthStateChange(() => {
+    clubPromise = undefined;
+  });
 
-  const members = makeSupabaseRepo(client, clubId, memberMapper);
+  const members = makeSupabaseRepo(client, clubId, memberMapper, {
+    readFrom: 'member_directory',
+  });
   const events = makeSupabaseRepo(client, clubId, eventMapper);
   const categories = makeSupabaseRepo(client, clubId, categoryMapper);
   const crews = makeSupabaseRepo(client, clubId, crewMapper);
@@ -331,37 +379,143 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
     },
   };
 
-  /**
-   * Stand-in auth, exactly like the mock's: until the auth phase there is no
-   * sign-in to perform, and the temporary open policies make the anon key
-   * sufficient. The auth phase replaces this with `supabase.auth`.
-   */
-  const MOCK_PROFILE: Profile = {
-    id: 'supabase-preauth-admin',
-    email: 'admin@dragonboat.local',
-    role: 'admin',
-    memberId: undefined,
+  const sessionFor = async (): Promise<Session | null> => {
+    const { data } = await client.auth.getSession();
+    if (!data.session) return null;
+    const email = data.session.user.email ?? '';
+    const standing = await fetchStanding();
+    if (!standing) return { email, profile: null };
+    return {
+      email,
+      profile: {
+        id: standing.profileId,
+        email: standing.email,
+        role: standing.role,
+        memberId: standing.memberId,
+      },
+    };
+  };
+
+  // createClub changes the session's meaning without any auth event firing,
+  // so the gateway keeps its own listener set and re-emits after it.
+  const sessionListeners = new Set<(session: Session | null) => void>();
+  const emitSession = async () => {
+    const session = await sessionFor();
+    for (const listener of sessionListeners) listener(session);
   };
 
   const auth: AuthGateway = {
-    async getSession(): Promise<Session | null> {
-      return { profile: MOCK_PROFILE };
+    getSession: sessionFor,
+
+    async signInWithOAuth(provider) {
+      const { error } = await client.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) throw new Error(error.message);
     },
-    async signInWithOAuth() {
-      /* No sign-in until the auth phase. */
+
+    async signInWithMagicLink(email) {
+      unwrap(
+        await client.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: window.location.origin },
+        }),
+      );
     },
-    async signInWithMagicLink() {
-      /* No sign-in until the auth phase. */
-    },
+
     async signOut() {
-      /* No sign-in until the auth phase. */
+      const { error } = await client.auth.signOut();
+      if (error) throw new Error(error.message);
     },
+
+    async createClub(name) {
+      unwrap(await client.rpc('create_club', { p_name: name }));
+      clubPromise = undefined;
+      await emitSession();
+    },
+
     onSessionChange(callback) {
-      callback({ profile: MOCK_PROFILE });
-      return () => {};
+      sessionListeners.add(callback);
+      const { data } = client.auth.onAuthStateChange(() => {
+        // Fetch fresh standing outside the auth callback (supabase-js warns
+        // against awaiting its own calls inside one).
+        setTimeout(() => void emitSession(), 0);
+      });
+      return () => {
+        sessionListeners.delete(callback);
+        data.subscription.unsubscribe();
+      };
     },
-    availableProviders: [],
-    magicLinkEnabled: false,
+
+    availableProviders: ['google'],
+    magicLinkEnabled: true,
+  };
+
+  const access: AccessRepo = {
+    async list() {
+      const cid = await clubId();
+      const rows = unwrap(
+        await client
+          .from('club_members')
+          .select('profile_id, role, member_id, profiles ( email, user_id )')
+          .eq('club_id', cid)
+          .order('created_at'),
+      ) as unknown as {
+        profile_id: string;
+        role: Profile['role'];
+        member_id: string | null;
+        profiles: { email: string; user_id: string | null } | null;
+      }[];
+      return rows.map((row) => ({
+        profileId: row.profile_id,
+        email: row.profiles?.email ?? '(unknown)',
+        role: row.role,
+        memberId: row.member_id ?? undefined,
+        active: row.profiles?.user_id != null,
+      }));
+    },
+
+    async invite(email, role, memberId) {
+      const cid = await clubId();
+      unwrap(
+        await client.rpc('invite_member', {
+          p_club: cid,
+          p_email: email.trim().toLowerCase(),
+          p_role: role,
+          p_member_id: memberId ?? null,
+        }),
+      );
+    },
+
+    async setRole(profileId, role) {
+      const cid = await clubId();
+      unwrap(
+        await client
+          .from('club_members')
+          .update({ role })
+          .eq('club_id', cid)
+          .eq('profile_id', profileId),
+      );
+    },
+
+    async linkMember(profileId, memberId) {
+      const cid = await clubId();
+      unwrap(
+        await client
+          .from('club_members')
+          .update({ member_id: memberId ?? null })
+          .eq('club_id', cid)
+          .eq('profile_id', profileId),
+      );
+    },
+
+    async revoke(profileId) {
+      const cid = await clubId();
+      unwrap(
+        await client.from('club_members').delete().eq('club_id', cid).eq('profile_id', profileId),
+      );
+    },
   };
 
   return {
@@ -382,5 +536,6 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
     settings,
     admin,
     auth,
+    access,
   };
 }

@@ -1,10 +1,12 @@
 import type { Assignment, Availability, ClubSettings, Profile, Snapshot } from '@/domain/types';
 import { newId } from '@/utils/ids';
 import type {
+  AccessRepo,
   AdminRepo,
   AssignmentRepo,
   AuthGateway,
   AvailabilityRepo,
+  ClubAccess,
   DataAdapter,
   Repo,
   Session,
@@ -258,20 +260,43 @@ const adminRepo: AdminRepo = {
 /**
  * Stand-in auth.
  *
- * The mock adapter is always signed in as an admin: with no server there is
- * nothing to authenticate against, and gating the UI behind a fake login would
- * only obstruct review. Real sign-in arrives with the Supabase adapter.
+ * The mock adapter is always signed in: with no server there is nothing to
+ * authenticate against, and gating the UI behind a fake login would only
+ * obstruct review. What IS real is the role — a dev switcher in Settings
+ * writes it here, which is how paddler-facing UI is built and tested without
+ * a backend. Switching to paddler borrows the first active roster member as
+ * "you".
  */
-const MOCK_PROFILE: Profile = {
-  id: 'mock-admin',
-  email: 'demo@dragonboat.local',
-  role: 'admin',
-  memberId: undefined,
-};
+const DEV_ROLE_KEY = 'dragonboat:dev-role';
+
+export function devRole(): Profile['role'] {
+  try {
+    const stored = localStorage.getItem(DEV_ROLE_KEY);
+    return stored === 'coach' || stored === 'paddler' ? stored : 'admin';
+  } catch {
+    return 'admin';
+  }
+}
+
+export function setDevRole(role: Profile['role']): void {
+  localStorage.setItem(DEV_ROLE_KEY, role);
+}
+
+function mockSession(): Session {
+  const role = devRole();
+  const memberId =
+    role === 'paddler'
+      ? readDb().members.find((m) => m.status === 'active')?.id
+      : undefined;
+  return {
+    email: 'demo@dragonboat.local',
+    profile: { id: 'mock-user', email: 'demo@dragonboat.local', role, memberId },
+  };
+}
 
 const authGateway: AuthGateway = {
   async getSession(): Promise<Session | null> {
-    return { profile: MOCK_PROFILE };
+    return mockSession();
   },
   async signInWithOAuth() {
     /* Always signed in. */
@@ -282,13 +307,48 @@ const authGateway: AuthGateway = {
   async signOut() {
     /* Always signed in. */
   },
+  async createClub() {
+    /* The mock is its own club. */
+  },
   onSessionChange(callback) {
-    callback({ profile: MOCK_PROFILE });
+    callback(mockSession());
     return () => {};
   },
   availableProviders: [],
   magicLinkEnabled: false,
 };
+
+/**
+ * In-memory access list, so the admin Access screen is buildable and testable
+ * against the mock. Deliberately not persisted: access control is meaningless
+ * without a real backend, and stale fake logins would only confuse.
+ */
+function makeMockAccess(): AccessRepo {
+  let rows: ClubAccess[] = [
+    { profileId: 'mock-user', email: 'demo@dragonboat.local', role: 'admin', active: true },
+  ];
+  return {
+    async list() {
+      return rows.map((row) => ({ ...row }));
+    },
+    async invite(email, role, memberId) {
+      const normalised = email.trim().toLowerCase();
+      if (rows.some((r) => r.email === normalised)) {
+        throw new Error('That email is already invited.');
+      }
+      rows.push({ profileId: newId(), email: normalised, role, memberId, active: false });
+    },
+    async setRole(profileId, role) {
+      rows = rows.map((r) => (r.profileId === profileId ? { ...r, role } : r));
+    },
+    async linkMember(profileId, memberId) {
+      rows = rows.map((r) => (r.profileId === profileId ? { ...r, memberId } : r));
+    },
+    async revoke(profileId) {
+      rows = rows.filter((r) => r.profileId !== profileId);
+    },
+  };
+}
 
 export const mockAdapter: DataAdapter = {
   name: 'mock',
@@ -306,4 +366,5 @@ export const mockAdapter: DataAdapter = {
   settings: settingsRepo,
   admin: adminRepo,
   auth: authGateway,
+  access: makeMockAccess(),
 };

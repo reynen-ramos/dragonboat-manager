@@ -5,22 +5,34 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { NumberField } from '@/components/ui/NumberField';
 import { Input, Select } from '@/components/ui/Field';
 import { Card, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
+import { useSession } from '@/auth/session';
+// The one sanctioned reach into the mock: a dev-only role switcher that is
+// meaningless on any other adapter and renders nothing there.
+import { devRole, setDevRole } from '@/data/mock';
 import { formatDate } from '@/domain/dates';
 import { slugId } from '@/domain/eventTypes';
-import type { BoatSize, EventBase, Snapshot } from '@/domain/types';
+import type { AppRole, BoatSize, EventBase, Snapshot } from '@/domain/types';
 import {
+  adapterName,
   UnreadableSnapshotError,
   exportSnapshot,
   useClearAllData,
+  useClubAccess,
   useEvents,
   useImportSnapshot,
+  useInviteAccess,
+  useLinkAccessMember,
   useLoadDemoClub,
+  useMembers,
+  useRevokeAccess,
   useSaveSettings,
+  useSetAccessRole,
   useSettings,
   useSettingsQuery,
   useTimeTrialSessions,
 } from '@/queries/hooks';
-import { pluralise } from '@/utils/format';
+import { fullName, pluralise } from '@/utils/format';
+import { compareMembers } from '@/utils/memberSort';
 import { useBackupReminder } from '@/stores/backupReminder';
 import { downloadTextFile } from '@/utils/download';
 
@@ -127,6 +139,10 @@ export function SettingsPage() {
         <TrainingKindsCard />
 
         <DisciplinesCard />
+
+        <AccessCard />
+
+        <DevRoleCard />
 
         <Card className="p-5">
           <h2 className="font-semibold">Your data</h2>
@@ -505,6 +521,207 @@ function DisciplinesCard() {
           <Plus /> Add discipline
         </Button>
       </div>
+    </Card>
+  );
+}
+
+const ROLE_LABEL: Record<AppRole, string> = {
+  admin: 'Admin',
+  coach: 'Coach',
+  paddler: 'Paddler',
+};
+
+/**
+ * Who can sign in, and as what. An invitation is just a registered email —
+ * the invitee signs in with it (magic link or Google) and lands connected;
+ * no email is sent from here, so tell them yourself.
+ */
+function AccessCard() {
+  const { session } = useSession();
+  const access = useClubAccess();
+  const members = useMembers();
+  const invite = useInviteAccess();
+  const setRole = useSetAccessRole();
+  const linkMember = useLinkAccessMember();
+  const revoke = useRevokeAccess();
+  const [email, setEmail] = useState('');
+  const [role, setInviteRole] = useState<AppRole>('paddler');
+  const [memberId, setMemberId] = useState('');
+  const [error, setError] = useState<string>();
+
+  const memberList = (members.data ?? [])
+    .filter((m) => m.status === 'active')
+    .sort(compareMembers('name'));
+  const memberName = (id: string | undefined) => {
+    const member = (members.data ?? []).find((m) => m.id === id);
+    return member ? fullName(member) : undefined;
+  };
+  const linked = new Set((access.data ?? []).map((row) => row.memberId).filter(Boolean));
+
+  const sendInvite = async () => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) return;
+    setError(undefined);
+    try {
+      await invite.mutateAsync({ email: trimmed, role, memberId: memberId || undefined });
+      setEmail('');
+      setMemberId('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not invite.');
+    }
+  };
+
+  return (
+    <Card className="p-5">
+      <h2 className="font-semibold">Access</h2>
+      <p className="mt-1 text-sm text-muted">
+        Who can sign in to this club. Inviting registers an email — send the person a note to
+        sign in with it; there's no invitation email. Linking a login to a roster member is what
+        lets a paddler answer their own sign-ups.
+      </p>
+
+      {access.isLoading ? (
+        <Spinner />
+      ) : (
+        <ul className="mt-4 flex flex-col gap-2">
+          {(access.data ?? []).map((row) => {
+            const self = row.profileId === session?.profile?.id;
+            return (
+              <li key={row.profileId} className="flex flex-wrap items-center gap-2">
+                <span className="min-w-0 flex-1 basis-48 truncate text-sm" title={row.email}>
+                  {row.email}
+                  {!row.active && (
+                    <span className="ml-2 text-xs text-muted">hasn't signed in yet</span>
+                  )}
+                </span>
+                <Select
+                  className="h-9 w-28 text-sm"
+                  aria-label={`Role for ${row.email}`}
+                  value={row.role}
+                  disabled={self}
+                  onChange={(e) =>
+                    setRole.mutate({ profileId: row.profileId, role: e.target.value as AppRole })
+                  }
+                >
+                  {(Object.keys(ROLE_LABEL) as AppRole[]).map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  className="h-9 w-40 text-sm"
+                  aria-label={`Linked member for ${row.email}`}
+                  value={row.memberId ?? ''}
+                  onChange={(e) =>
+                    linkMember.mutate({
+                      profileId: row.profileId,
+                      memberId: e.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">Not linked</option>
+                  {memberList
+                    .filter((m) => m.id === row.memberId || !linked.has(m.id))
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {fullName(m)}
+                      </option>
+                    ))}
+                  {row.memberId && !memberName(row.memberId) && (
+                    <option value={row.memberId}>Former member</option>
+                  )}
+                </Select>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Revoke access for ${row.email}`}
+                  disabled={self}
+                  title={self ? "You can't revoke your own access." : undefined}
+                  onClick={() => revoke.mutate(row.profileId)}
+                >
+                  <Trash2 />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-subtle pt-4">
+        <Input
+          type="email"
+          className="h-9 max-w-56 text-sm"
+          aria-label="Email to invite"
+          placeholder="paddler@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Select
+          className="h-9 w-28 text-sm"
+          aria-label="Role for the invitation"
+          value={role}
+          onChange={(e) => setInviteRole(e.target.value as AppRole)}
+        >
+          {(Object.keys(ROLE_LABEL) as AppRole[]).map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="h-9 w-40 text-sm"
+          aria-label="Member to link the invitation to"
+          value={memberId}
+          onChange={(e) => setMemberId(e.target.value)}
+        >
+          <option value="">Not linked</option>
+          {memberList
+            .filter((m) => !linked.has(m.id))
+            .map((m) => (
+              <option key={m.id} value={m.id}>
+                {fullName(m)}
+              </option>
+            ))}
+        </Select>
+        <Button size="sm" onClick={sendInvite} disabled={!email.trim() || invite.isPending}>
+          <Plus /> Invite
+        </Button>
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </Card>
+  );
+}
+
+/**
+ * Development only: the mock adapter is always signed in, so this is how
+ * coach- and paddler-facing UI gets built and reviewed without a backend.
+ * Reload after switching — role shapes the whole shell.
+ */
+function DevRoleCard() {
+  if (adapterName !== 'mock') return null;
+  return (
+    <Card className="border-dashed p-5">
+      <h2 className="font-semibold">Developer: act as role</h2>
+      <p className="mt-1 text-sm text-muted">
+        Demo data only — pick the role the app should treat you as. Paddler borrows the first
+        active member as you.
+      </p>
+      <Select
+        className="mt-3 h-9 w-40 text-sm"
+        aria-label="Act as role"
+        defaultValue={devRole()}
+        onChange={(e) => {
+          setDevRole(e.target.value as AppRole);
+          window.location.reload();
+        }}
+      >
+        {(Object.keys(ROLE_LABEL) as AppRole[]).map((r) => (
+          <option key={r} value={r}>
+            {ROLE_LABEL[r]}
+          </option>
+        ))}
+      </Select>
     </Card>
   );
 }
