@@ -11,7 +11,15 @@ import type {
   SettingsRepo,
 } from '../repo';
 import { migrateSnapshot, UnreadableSnapshotError } from '../migrate';
-import { mutateDb, readDb, resetDb, seedDemoDb, writeDb } from './db';
+import {
+  mutateDb,
+  readDb,
+  resetDb,
+  seedDemoDb,
+  subscribeToExternalChanges,
+  takeReadWarnings,
+  writeDb,
+} from './db';
 
 /**
  * localStorage-backed adapter.
@@ -284,6 +292,8 @@ const authGateway: AuthGateway = {
 
 export const mockAdapter: DataAdapter = {
   name: 'mock',
+  subscribeToExternalChanges,
+  takeReadWarnings,
   members: makeRepo('members'),
   events: makeRepo('events'),
   categories: makeRepo('categories'),

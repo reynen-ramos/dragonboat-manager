@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { type UseMutationResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adapter, subscribeToExternalChanges, takeReadWarnings } from '@/data';
+import { adapter } from '@/data';
 
 // Re-exported so the UI can distinguish a refusal worth reading (a backup
 // from a newer version, damaged rows) without importing from @/data itself.
@@ -486,7 +486,7 @@ export const exportSnapshot = () => adapter.admin.exportSnapshot();
 export function useExternalStorageSync() {
   const queryClient = useQueryClient();
   useEffect(
-    () => subscribeToExternalChanges(() => void queryClient.invalidateQueries()),
+    () => adapter.subscribeToExternalChanges(() => void queryClient.invalidateQueries()),
     [queryClient],
   );
 }
@@ -495,6 +495,10 @@ export function useExternalStorageSync() {
 export function useStorageWarnings() {
   const notify = useNotifications((s) => s.notify);
   useEffect(() => {
-    for (const warning of takeReadWarnings()) notify(warning);
+    for (const warning of adapter.takeReadWarnings()) notify(warning);
   }, [notify]);
 }
+
+/** Which storage engine is live — the UI branches on this only for chrome
+ *  like the offline banner, never for behaviour. */
+export const adapterName = adapter.name;
