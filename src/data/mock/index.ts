@@ -1,4 +1,4 @@
-import type { Availability, ClubSettings, Profile, Snapshot } from '@/domain/types';
+import type { Assignment, Availability, ClubSettings, Profile, Snapshot } from '@/domain/types';
 import { newId } from '@/utils/ids';
 import type {
   AdminRepo,
@@ -63,6 +63,14 @@ function makeRepo<K extends EntityKey>(key: K): Repo<Snapshot[K][number]> {
       });
     },
 
+    async createMany(inputs) {
+      if (inputs.length === 0) return [];
+      return mutateDb((db) => {
+        const created = inputs.map((input) => ({ ...input, id: newId() }) as T);
+        return { db: replace(db, [...(db[key] as T[]), ...created]), result: created };
+      });
+    },
+
     async update(id, patch) {
       return mutateDb((db) => {
         const current = (db[key] as T[]).find((row) => row.id === id);
@@ -83,6 +91,18 @@ function makeRepo<K extends EntityKey>(key: K): Repo<Snapshot[K][number]> {
         db: replace(
           db,
           (db[key] as T[]).filter((row) => row.id !== id),
+        ),
+        result: undefined,
+      }));
+    },
+
+    async removeMany(ids) {
+      if (ids.length === 0) return;
+      const gone = new Set(ids);
+      mutateDb((db) => ({
+        db: replace(
+          db,
+          (db[key] as T[]).filter((row) => !gone.has(row.id)),
         ),
         result: undefined,
       }));
@@ -116,6 +136,27 @@ const assignmentRepo: AssignmentRepo = {
       },
       result: assignments,
     }));
+  },
+
+  async applyChanges(changes) {
+    if (changes.length === 0) return;
+    mutateDb((db) => {
+      let next = db.assignments.slice();
+      for (const change of changes) {
+        if (change.op === 'create') {
+          next.push({ ...change.assignment, id: newId() } as Assignment);
+        } else if (change.op === 'update') {
+          const index = next.findIndex((a) => a.id === change.id);
+          // Throwing before the write keeps the whole plan unapplied — a
+          // half-moved crew is worse than a failed drop.
+          if (index === -1) throw new Error(`No assignments with id ${change.id}`);
+          next[index] = { ...next[index], ...change.patch } as Assignment;
+        } else {
+          next = next.filter((a) => a.id !== change.id);
+        }
+      }
+      return { db: { ...db, assignments: next }, result: undefined };
+    });
   },
 };
 
