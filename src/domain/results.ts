@@ -16,6 +16,44 @@ export interface RankedEntry {
   deltaMs?: number;
 }
 
+export interface RankedTime<T> {
+  row: T;
+  /** 1-based, absent until timed. Ties share a placement. */
+  placement?: number;
+  /** Milliseconds behind the fastest in the same field. */
+  deltaMs?: number;
+}
+
+/**
+ * Ranks anything that carries a time, in one field.
+ *
+ * The ordering rules are those of every results sheet — ties share a
+ * placement and the next skips (two tied for 1st are followed by 3rd), the
+ * untimed sort last unranked, and a NaN time is untimed rather than fastest
+ * (`typeof NaN === 'number'` bit this codebase once already). Race entries
+ * and time-trial results rank through the same function so those rules can
+ * never drift apart.
+ */
+export function rankTimes<T extends { timeMs?: number }>(rows: T[]): RankedTime<T>[] {
+  const timed = rows
+    .filter((r): r is T & { timeMs: number } => Number.isFinite(r.timeMs))
+    .sort((a, b) => a.timeMs - b.timeMs);
+  const untimed = rows.filter((r) => !Number.isFinite(r.timeMs));
+
+  const fastest = timed[0]?.timeMs;
+  const ranked: RankedTime<T>[] = [];
+
+  timed.forEach((row, index) => {
+    // Standard competition ranking: equal times share the earlier placement.
+    const tiedWithPrevious = index > 0 && row.timeMs === timed[index - 1].timeMs;
+    const placement = tiedWithPrevious ? ranked[ranked.length - 1].placement : index + 1;
+    ranked.push({ row, placement, deltaMs: row.timeMs - fastest! });
+  });
+
+  for (const row of untimed) ranked.push({ row });
+  return ranked;
+}
+
 export const STAGE_LABELS: Record<RaceStage, string> = {
   heat: 'Heat',
   semi: 'Semi-final',
@@ -76,25 +114,9 @@ export function rankEntries(entries: RaceEntry[]): RankedEntry[] {
   const ranked: RankedEntry[] = [];
 
   for (const group of groups.values()) {
-    const timed = group
-      // `typeof NaN === 'number'`, so the old check let a NaN time take
-      // placement 1 and push the real times down the sheet.
-      .filter((e): e is RaceEntry & { timeMs: number } => Number.isFinite(e.timeMs))
-      .sort((a, b) => a.timeMs - b.timeMs);
-    const untimed = group.filter((e) => !Number.isFinite(e.timeMs));
-
-    const fastest = timed[0]?.timeMs;
-
-    timed.forEach((entry, index) => {
-      // Standard competition ranking: equal times share the earlier placement.
-      const tiedWithPrevious = index > 0 && entry.timeMs === timed[index - 1].timeMs;
-      const placement = tiedWithPrevious
-        ? ranked[ranked.length - 1].placement
-        : index + 1;
-      ranked.push({ entry, placement, deltaMs: entry.timeMs - fastest! });
-    });
-
-    for (const entry of untimed) ranked.push({ entry });
+    for (const { row, placement, deltaMs } of rankTimes(group)) {
+      ranked.push({ entry: row, placement, deltaMs });
+    }
   }
 
   return ranked;

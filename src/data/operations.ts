@@ -6,6 +6,8 @@ import type {
   Crew,
   Member,
   RaceEntry,
+  TimeTrialResult,
+  TimeTrialSession,
 } from '@/domain/types';
 import type { DataAdapter } from './repo';
 
@@ -30,6 +32,8 @@ export interface DeletedBundle {
   assignments: Assignment[];
   availability: Availability[];
   raceEntries: RaceEntry[];
+  timeTrialSessions: TimeTrialSession[];
+  timeTrialResults: TimeTrialResult[];
 }
 
 const emptyBundle = (): DeletedBundle => ({
@@ -40,6 +44,8 @@ const emptyBundle = (): DeletedBundle => ({
   assignments: [],
   availability: [],
   raceEntries: [],
+  timeTrialSessions: [],
+  timeTrialResults: [],
 });
 
 const merge = (into: DeletedBundle, from: DeletedBundle): void => {
@@ -121,12 +127,32 @@ export async function deleteMemberCascade(
   if (member) bundle.members.push(member);
 
   const assignments = await adapter.assignments.list({ memberId });
+  const trialResults = await adapter.timeTrialResults.list({ memberId });
   bundle.assignments.push(...assignments);
+  bundle.timeTrialResults.push(...trialResults);
   bundle.availability.push(...(await adapter.availability.listByMember(memberId)));
 
   await adapter.assignments.removeMany(assignments.map((a) => a.id));
+  await adapter.timeTrialResults.removeMany(trialResults.map((r) => r.id));
   await adapter.availability.removeByMember(memberId);
   await adapter.members.remove(memberId);
+  return bundle;
+}
+
+/** Removing a session takes every time recorded in it along. */
+export async function deleteTimeTrialSessionCascade(
+  adapter: DataAdapter,
+  sessionId: string,
+): Promise<DeletedBundle> {
+  const bundle = emptyBundle();
+  const session = await adapter.timeTrialSessions.get(sessionId);
+  if (session) bundle.timeTrialSessions.push(session);
+
+  const results = await adapter.timeTrialResults.list({ sessionId });
+  bundle.timeTrialResults.push(...results);
+
+  await adapter.timeTrialResults.removeMany(results.map((r) => r.id));
+  await adapter.timeTrialSessions.remove(sessionId);
   return bundle;
 }
 
@@ -144,6 +170,8 @@ export async function restoreDeleted(adapter: DataAdapter, bundle: DeletedBundle
   await adapter.crews.restoreMany(bundle.crews);
   await adapter.assignments.restoreMany(bundle.assignments);
   await adapter.raceEntries.restoreMany(bundle.raceEntries);
+  await adapter.timeTrialSessions.restoreMany(bundle.timeTrialSessions);
+  await adapter.timeTrialResults.restoreMany(bundle.timeTrialResults);
   if (bundle.availability.length > 0) await adapter.availability.setMany(bundle.availability);
 }
 

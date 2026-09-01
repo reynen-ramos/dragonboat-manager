@@ -12,6 +12,7 @@ import {
   deleteCrewCascade,
   deleteEventCascade,
   deleteMemberCascade,
+  deleteTimeTrialSessionCascade,
   duplicateCrew,
   restoreDeleted,
   swapCrewLineups,
@@ -31,6 +32,8 @@ import type {
   Member,
   RaceEntry,
   Snapshot,
+  TimeTrialResult,
+  TimeTrialSession,
 } from '@/domain/types';
 import { keys } from './keys';
 
@@ -140,6 +143,32 @@ export const useRaceEntries = (crewId: string | undefined) =>
 
 export const useAllRaceEntries = () =>
   useQuery({ queryKey: keys.raceEntries.all, queryFn: () => adapter.raceEntries.list() });
+
+export const useTimeTrialSessions = () =>
+  useQuery({
+    queryKey: keys.timeTrialSessions.all,
+    queryFn: () => adapter.timeTrialSessions.list(),
+  });
+
+export const useTimeTrialSession = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.timeTrialSessions.detail(id ?? ''),
+    queryFn: () => adapter.timeTrialSessions.get(id!),
+    enabled: Boolean(id),
+  });
+
+export const useTimeTrialResults = (sessionId: string | undefined) =>
+  useQuery({
+    queryKey: keys.timeTrialResults.bySession(sessionId ?? ''),
+    queryFn: () => adapter.timeTrialResults.list({ sessionId }),
+    enabled: Boolean(sessionId),
+  });
+
+export const useAllTimeTrialResults = () =>
+  useQuery({
+    queryKey: keys.timeTrialResults.all,
+    queryFn: () => adapter.timeTrialResults.list(),
+  });
 
 /**
  * The settings query itself, for screens that must not act before it resolves.
@@ -357,6 +386,44 @@ export const useUpdateRaceEntry = () =>
 export const useDeleteRaceEntry = () =>
   useInvalidatingMutation((id: string) => adapter.raceEntries.remove(id), [keys.raceEntries.all]);
 
+export const useCreateTimeTrialSession = () =>
+  useInvalidatingMutation(
+    (input: Omit<TimeTrialSession, 'id'>) => adapter.timeTrialSessions.create(input),
+    [keys.timeTrialSessions.all],
+  );
+
+export const useUpdateTimeTrialSession = () =>
+  useInvalidatingMutation(
+    ({ id, patch }: { id: string; patch: Partial<Omit<TimeTrialSession, 'id'>> }) =>
+      adapter.timeTrialSessions.update(id, patch),
+    [keys.timeTrialSessions.all],
+  );
+
+export const useDeleteTimeTrialSession = () =>
+  useInvalidatingMutation((id: string) => deleteTimeTrialSessionCascade(adapter, id), [
+    keys.timeTrialSessions.all,
+    keys.timeTrialResults.all,
+  ]);
+
+/** Adds a batch of paddlers to a session's sheet — one write. */
+export const useCreateTimeTrialResults = () =>
+  useInvalidatingMutation(
+    (inputs: Omit<TimeTrialResult, 'id'>[]) => adapter.timeTrialResults.createMany(inputs),
+    [keys.timeTrialResults.all],
+  );
+
+export const useUpdateTimeTrialResult = () =>
+  useInvalidatingMutation(
+    ({ id, patch }: { id: string; patch: Partial<Omit<TimeTrialResult, 'id'>> }) =>
+      adapter.timeTrialResults.update(id, patch),
+    [keys.timeTrialResults.all],
+  );
+
+export const useDeleteTimeTrialResult = () =>
+  useInvalidatingMutation((id: string) => adapter.timeTrialResults.remove(id), [
+    keys.timeTrialResults.all,
+  ]);
+
 export const useSaveSettings = () =>
   useInvalidatingMutation((settings: ClubSettings) => adapter.settings.save(settings), [
     keys.settings,
@@ -370,6 +437,8 @@ const ALL_KEYS = [
   keys.assignments.all,
   keys.availability.all,
   keys.raceEntries.all,
+  keys.timeTrialSessions.all,
+  keys.timeTrialResults.all,
   keys.settings,
 ] as const;
 

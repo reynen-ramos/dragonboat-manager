@@ -6,6 +6,7 @@ import {
   deleteCrewCascade,
   deleteEventCascade,
   deleteMemberCascade,
+  deleteTimeTrialSessionCascade,
   restoreDeleted,
   swapCrewLineups,
 } from './operations';
@@ -165,6 +166,50 @@ describe('deleteMemberCascade', () => {
 
     expect((await adapter.assignments.get(seated.id))?.memberId).toBe(member.id);
     expect(await adapter.availability.listByMember(member.id)).toHaveLength(1);
+  });
+
+  it('takes their time-trial results along, and restore brings them back', async () => {
+    const { member } = await seed();
+    const session = await adapter.timeTrialSessions.create({ date: '2026-08-01', distanceM: 200 });
+    const result = await adapter.timeTrialResults.create({
+      sessionId: session.id,
+      memberId: member.id,
+      timeMs: 65_000,
+    });
+
+    const bundle = await deleteMemberCascade(adapter, member.id);
+    expect(bundle.timeTrialResults.map((r) => r.id)).toEqual([result.id]);
+    expect(bundle.timeTrialSessions).toHaveLength(0); // the session is not theirs to take
+    expect(await adapter.timeTrialResults.list()).toHaveLength(0);
+
+    await restoreDeleted(adapter, bundle);
+    expect((await adapter.timeTrialResults.get(result.id))?.timeMs).toBe(65_000);
+  });
+});
+
+describe('deleteTimeTrialSessionCascade', () => {
+  it('takes every recorded time with it, and restore is exact', async () => {
+    const { member, spare } = await seed();
+    const session = await adapter.timeTrialSessions.create({
+      date: '2026-08-01',
+      distanceM: 200,
+      discipline: 'oc1',
+    });
+    await adapter.timeTrialResults.createMany([
+      { sessionId: session.id, memberId: member.id, timeMs: 65_000 },
+      { sessionId: session.id, memberId: spare.id },
+    ]);
+
+    const bundle = await deleteTimeTrialSessionCascade(adapter, session.id);
+
+    expect(bundle.timeTrialSessions.map((s) => s.id)).toEqual([session.id]);
+    expect(bundle.timeTrialResults).toHaveLength(2);
+    expect(await adapter.timeTrialSessions.list()).toHaveLength(0);
+    expect(await adapter.timeTrialResults.list()).toHaveLength(0);
+
+    await restoreDeleted(adapter, bundle);
+    expect((await adapter.timeTrialSessions.get(session.id))?.discipline).toBe('oc1');
+    expect(await adapter.timeTrialResults.list({ sessionId: session.id })).toHaveLength(2);
   });
 });
 

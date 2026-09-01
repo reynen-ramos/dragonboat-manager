@@ -57,6 +57,12 @@ export interface TrainingKindDef {
   label: string;
 }
 
+/** A club-defined time-trial discipline — the craft or machine paddled. */
+export interface DisciplineDef {
+  id: string;
+  label: string;
+}
+
 /** A physical seat position in the boat. Rows run bow (1) to stern (N). */
 export interface SeatPosition {
   row: number;
@@ -205,6 +211,34 @@ export interface RaceEntry {
   placement?: number;
 }
 
+/**
+ * One sitting of individual time trials: a date, a distance, a discipline.
+ *
+ * Trials are member-scoped where races are crew-scoped — the point of a trial
+ * is comparing and tracking paddlers, not boats, so results hang off members
+ * directly instead of borrowing the crew machinery.
+ */
+export interface TimeTrialSession {
+  id: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  name?: string;
+  distanceM: number;
+  /** Id of a `ClubSettings.disciplines` entry. */
+  discipline?: string;
+  notes?: string;
+}
+
+/** One paddler's run in a time-trial session. */
+export interface TimeTrialResult {
+  id: string;
+  sessionId: string;
+  memberId: string;
+  /** Time in milliseconds. Absent until the paddler has been timed. */
+  timeMs?: number;
+  note?: string;
+}
+
 /** Links a signed-in auth user to a roster member and an app role. */
 export interface Profile {
   id: string;
@@ -228,6 +262,8 @@ export interface Snapshot {
   assignments: Assignment[];
   availability: Availability[];
   raceEntries: RaceEntry[];
+  timeTrialSessions: TimeTrialSession[];
+  timeTrialResults: TimeTrialResult[];
   settings: ClubSettings;
 }
 
@@ -244,4 +280,6 @@ export interface ClubSettings {
   eventTypes: EventTypeDef[];
   /** The club's kinds of training session. Seeded with water/land/supplementary. */
   trainingKinds: TrainingKindDef[];
+  /** The club's time-trial disciplines. Seeded with OC1/erg/small boat. */
+  disciplines: DisciplineDef[];
 }

@@ -3,6 +3,7 @@ import { seatKey } from './boat';
 import { buildDemoSnapshot } from './demoData';
 import { diffLineups } from './lineupDiff';
 import { planAdvancement, rankEntries } from './results';
+import { progressSeries, rankSession } from './timeTrials';
 import { DEFAULT_CLUB_SETTINGS } from './rules.config';
 import { validateCrew } from './validation';
 
@@ -267,5 +268,34 @@ describe('each feature has something to show', () => {
 
   it('some members declare preferred zones', () => {
     expect(snap.members.filter((m) => m.preferredZones?.length).length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('time trials', () => {
+  it('holds three past sessions whose results all resolve', () => {
+    expect(snap.timeTrialSessions).toHaveLength(3);
+    expect(snap.timeTrialSessions.every((s) => s.date < TODAY)).toBe(true);
+
+    const sessionIds = new Set(snap.timeTrialSessions.map((s) => s.id));
+    for (const r of snap.timeTrialResults) {
+      expect(sessionIds.has(r.sessionId)).toBe(true);
+      expect(membersById.has(r.memberId)).toBe(true);
+    }
+  });
+
+  it('demonstrates a tie, an untimed run, and visible progress', () => {
+    const late = snap.timeTrialSessions.find((s) => s.name === 'Selection Trial II')!;
+    const lateResults = snap.timeTrialResults.filter((r) => r.sessionId === late.id);
+    const ranked = rankSession(lateResults);
+
+    expect(ranked.filter((r) => r.placement === 1).length).toBe(2); // shared 1st
+    expect(ranked.some((r) => r.placement === undefined)).toBe(true); // untimed
+
+    // The two OC1 sittings give at least one member a falling line to draw.
+    const someMember = snap.timeTrialResults.find((r) => r.sessionId === late.id)!.memberId;
+    const series = progressSeries(someMember, snap.timeTrialSessions, snap.timeTrialResults);
+    const oc1 = series.find((s) => s.discipline === 'oc1');
+    expect(oc1 && oc1.points.length >= 2).toBe(true);
+    expect(oc1!.points[oc1!.points.length - 1].timeMs).toBeLessThan(oc1!.points[0].timeMs);
   });
 });

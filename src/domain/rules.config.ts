@@ -1,4 +1,5 @@
 import { BUILTIN_EVENT_TYPES, BUILTIN_TRAINING_KINDS } from './eventTypes';
+import { BUILTIN_DISCIPLINES } from './timeTrials';
 import type { AgeDivision, BoatSize, ClubSettings } from './types';
 
 /**
@@ -14,6 +15,7 @@ export const DEFAULT_CLUB_SETTINGS: ClubSettings = {
   bowSternBalanceTolerance: 0.05,
   eventTypes: BUILTIN_EVENT_TYPES,
   trainingKinds: BUILTIN_TRAINING_KINDS,
+  disciplines: BUILTIN_DISCIPLINES,
 };
 
 /** Inclusive age bounds per division. `undefined` means unbounded on that end. */
