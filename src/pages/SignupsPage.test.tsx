@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { SessionProvider } from '@/auth/SessionProvider';
 import { invalidateCache } from '@/data/mock/db';
 import { mockAdapter } from '@/data/mock/index';
 import { ageOn, todayIso } from '@/domain/dates';
@@ -53,11 +54,14 @@ const renderPage = (eventId: string) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/events/${eventId}/signups`]}>
-        <Routes>
-          <Route path="/events/:eventId/signups" element={<SignupsPage />} />
-        </Routes>
-      </MemoryRouter>
+      {/* The mock gateway signs in as an admin, so every row stays editable. */}
+      <SessionProvider>
+        <MemoryRouter initialEntries={[`/events/${eventId}/signups`]}>
+          <Routes>
+            <Route path="/events/:eventId/signups" element={<SignupsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </SessionProvider>
     </QueryClientProvider>,
   );
 };

@@ -80,7 +80,7 @@ describe('the shell gate', () => {
     expect(screen.getAllByRole('link', { name: /Settings/ }).length).toBeGreaterThan(0);
   });
 
-  it('hides Settings from a paddler', async () => {
+  it('gives a paddler their own nav: My Page, no staff surfaces', async () => {
     renderShell(
       gatewayFor({
         email: 'paddler@example.com',
@@ -89,7 +89,10 @@ describe('the shell gate', () => {
     );
 
     expect(await screen.findByText('page content')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Settings/ })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Dashboard/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /My Page/ }).length).toBeGreaterThan(0);
+    for (const staffOnly of [/Settings/, /Dashboard/, /Members/, /Reports/]) {
+      expect(screen.queryByRole('link', { name: staffOnly })).not.toBeInTheDocument();
+    }
+    expect(screen.getAllByRole('link', { name: /Trainings/ }).length).toBeGreaterThan(0);
   });
 });

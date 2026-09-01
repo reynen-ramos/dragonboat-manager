@@ -367,4 +367,15 @@ export const mockAdapter: DataAdapter = {
   admin: adminRepo,
   auth: authGateway,
   access: makeMockAccess(),
+
+  async updateMyContact(contact) {
+    const memberId = mockSession().profile?.memberId;
+    if (!memberId) throw new Error('No roster member is linked to your login.');
+    await mockAdapter.members.update(memberId, {
+      email: contact.email,
+      phone: contact.phone,
+      emergencyContactName: contact.emergencyContactName,
+      emergencyContactPhone: contact.emergencyContactPhone,
+    });
+  },
 };

@@ -537,5 +537,18 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
     admin,
     auth,
     access,
+
+    async updateMyContact(contact) {
+      const cid = await clubId();
+      unwrap(
+        await client.rpc('update_my_contact', {
+          p_club: cid,
+          p_email: contact.email ?? null,
+          p_phone: contact.phone ?? null,
+          p_emergency_name: contact.emergencyContactName ?? null,
+          p_emergency_phone: contact.emergencyContactPhone ?? null,
+        }),
+      );
+    },
   };
 }

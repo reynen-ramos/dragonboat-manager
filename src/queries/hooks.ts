@@ -18,6 +18,7 @@ import {
   swapCrewLineups,
   type DeletedBundle,
 } from '@/data/operations';
+import type { OwnContact } from '@/data/repo';
 import { DEFAULT_CLUB_SETTINGS } from '@/domain/rules.config';
 import type { SeatingChange } from '@/domain/seating';
 import type {
@@ -532,3 +533,9 @@ export const useLinkAccessMember = () =>
 
 export const useRevokeAccess = () =>
   useInvalidatingMutation((profileId: string) => adapter.access.revoke(profileId), [keys.access]);
+
+/** The paddler path for editing their own contact row (staff use useUpdateMember). */
+export const useUpdateMyContact = () =>
+  useInvalidatingMutation((contact: OwnContact) => adapter.updateMyContact(contact), [
+    keys.members.all,
+  ]);

@@ -16,6 +16,7 @@ import {
   type PersonalBest,
 } from '@/domain/timeTrials';
 import type { Member, TimeTrialResult, TimeTrialSession } from '@/domain/types';
+import { useCanManage } from '@/auth/session';
 import {
   useAllTimeTrialResults,
   useCreateTimeTrialSession,
@@ -31,6 +32,7 @@ import { fullName } from '@/utils/format';
  * coach opens when picking a crew and the page a paddler checks after one.
  */
 export function TimeTrialsPage() {
+  const canManage = useCanManage();
   const sessions = useTimeTrialSessions();
   const results = useAllTimeTrialResults();
   const members = useMembers();
@@ -63,9 +65,11 @@ export function TimeTrialsPage() {
         title="Time trials"
         description="Solo runs over a set distance — who is fast, and who is getting faster."
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
-            <Plus /> New session
-          </Button>
+          canManage ? (
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              <Plus /> New session
+            </Button>
+          ) : undefined
         }
       />
 
@@ -75,9 +79,11 @@ export function TimeTrialsPage() {
           title="No time trials yet"
           description="Run a session — 200m in the OC1, a 500m erg test — and record everyone's time here."
           action={
-            <Button variant="primary" onClick={() => setCreating(true)}>
-              <Plus /> New session
-            </Button>
+            canManage ? (
+              <Button variant="primary" onClick={() => setCreating(true)}>
+                <Plus /> New session
+              </Button>
+            ) : undefined
           }
         />
       ) : (

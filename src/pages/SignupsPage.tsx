@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useCanManage, useSession } from '@/auth/session';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { Badge, Card, EmptyState, LoadFailed, PageHeader, Spinner } from '@/components/ui/misc';
@@ -40,6 +41,10 @@ const STATUSES: { value: AvailabilityStatus; label: string; tone: string }[] = [
 
 export function SignupsPage() {
   const { eventId } = useParams();
+  const canManage = useCanManage();
+  const { session } = useSession();
+  // A paddler's one live control on this sheet: their own row.
+  const ownMemberId = session?.profile?.memberId;
   const event = useEvent(eventId);
   const members = useMembers();
   const availability = useAvailability(eventId);
@@ -127,7 +132,7 @@ export function SignupsPage() {
             {unanswered > 0 && <Badge>{unanswered} not signed up</Badge>}
           </div>
 
-          {unanswered > 0 && (
+          {canManage && unanswered > 0 && (
             <Card className="mb-4 flex flex-wrap items-center gap-2 p-3">
               <span className="text-sm text-muted">
                 Mark the {pluralise(unanswered, 'paddler')} who haven't signed up yet as
@@ -191,6 +196,7 @@ export function SignupsPage() {
                   <AvailabilityRow
                     key={member.id}
                     member={member}
+                    editable={canManage || member.id === ownMemberId}
                     status={byMember.get(member.id)?.status}
                     note={byMember.get(member.id)?.note}
                     onSetStatus={(status) => setOne(member.id, status)}
@@ -223,12 +229,15 @@ export function SignupsPage() {
 
 function AvailabilityRow({
   member,
+  editable,
   status,
   note,
   onSetStatus,
   onSetNote,
 }: {
   member: Member;
+  /** Staff edit every row; a paddler edits only their own. */
+  editable: boolean;
   status?: AvailabilityStatus;
   note?: string;
   onSetStatus: (status: AvailabilityStatus) => void;
@@ -257,7 +266,9 @@ function AvailabilityRow({
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{fullName(member)}</p>
-        {editingNote ? (
+        {!editable ? (
+          note && <p className="truncate text-xs text-muted">{note}</p>
+        ) : editingNote ? (
           <Input
             className="mt-1 h-8 text-xs"
             autoFocus
@@ -296,19 +307,31 @@ function AvailabilityRow({
         <span className="sr-only">{SIDE_PREFERENCE_LABEL[member.sidePreference]}</span>
       </Badge>
 
-      <RadioCards
-        label={`Sign-up for ${fullName(member)}`}
-        className="flex shrink-0 gap-1"
-        optionClassName="h-9 min-w-14 rounded-lg border border-subtle px-2 text-xs font-medium transition-colors hover:surface-sunken"
-        value={status}
-        onChange={onSetStatus}
-        options={STATUSES.map(({ value, label, tone }) => ({
-          value,
-          label,
-          selectedClassName: `${tone} border-transparent`,
-        }))}
-        renderOption={(option) => option.label}
-      />
+      {editable ? (
+        <RadioCards
+          label={`Sign-up for ${fullName(member)}`}
+          className="flex shrink-0 gap-1"
+          optionClassName="h-9 min-w-14 rounded-lg border border-subtle px-2 text-xs font-medium transition-colors hover:surface-sunken"
+          value={status}
+          onChange={onSetStatus}
+          options={STATUSES.map(({ value, label, tone }) => ({
+            value,
+            label,
+            selectedClassName: `${tone} border-transparent`,
+          }))}
+          renderOption={(option) => option.label}
+        />
+      ) : (
+        <span className="w-16 shrink-0 text-right">
+          {status ? (
+            <Badge tone={status === 'in' ? 'good' : status === 'maybe' ? 'warn' : 'bad'}>
+              {STATUSES.find((s) => s.value === status)?.label}
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted">—</span>
+          )}
+        </span>
+      )}
     </li>
   );
 }

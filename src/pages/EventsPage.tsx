@@ -8,6 +8,7 @@ import { RadioCards } from '@/components/ui/RadioCards';
 import { todayIso } from '@/domain/dates';
 import { eventBase } from '@/domain/eventTypes';
 import type { ClubEvent } from '@/domain/types';
+import { useCanManage } from '@/auth/session';
 import { useEvents, useSettings } from '@/queries/hooks';
 
 type View = 'list' | 'calendar';
@@ -19,6 +20,7 @@ type View = 'list' | 'calendar';
  * is read at once, whichever door it is opened through.
  */
 export function EventsPage() {
+  const canManage = useCanManage();
   const events = useEvents();
   const settings = useSettings();
   const [view, setView] = useState<View>('list');
@@ -46,9 +48,11 @@ export function EventsPage() {
       <PageHeader
         title="Events"
         actions={
-          <Button variant="primary" onClick={() => setCreating({})}>
-            <Plus /> New event
-          </Button>
+          canManage ? (
+            <Button variant="primary" onClick={() => setCreating({})}>
+              <Plus /> New event
+            </Button>
+          ) : undefined
         }
       />
 
@@ -58,9 +62,11 @@ export function EventsPage() {
           title="No events yet"
           description="Create a regatta or a practice, then add the categories you are entering."
           action={
-            <Button variant="primary" onClick={() => setCreating({})}>
-              <Plus /> New event
-            </Button>
+            canManage ? (
+              <Button variant="primary" onClick={() => setCreating({})}>
+                <Plus /> New event
+              </Button>
+            ) : undefined
           }
         />
       ) : (
@@ -79,7 +85,10 @@ export function EventsPage() {
           />
 
           {view === 'calendar' ? (
-            <FullCalendar events={all} onPickDay={(iso) => setCreating({ startDate: iso })} />
+            <FullCalendar
+              events={all}
+              onPickDay={canManage ? (iso) => setCreating({ startDate: iso }) : undefined}
+            />
           ) : listed.length === 0 ? (
             <EmptyState
               title="No races or club events yet"

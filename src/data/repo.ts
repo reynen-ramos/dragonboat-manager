@@ -129,6 +129,14 @@ export interface ClubAccess {
   active: boolean;
 }
 
+/** The contact fields a paddler may edit on their own roster row. */
+export interface OwnContact {
+  email?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+}
+
 /** Admin-only management of who can sign in and as what. */
 export interface AccessRepo {
   list(): Promise<ClubAccess[]>;
@@ -161,4 +169,10 @@ export interface DataAdapter {
   admin: AdminRepo;
   auth: AuthGateway;
   access: AccessRepo;
+  /**
+   * The signed-in paddler's one write to the roster: their own contact
+   * details. Staff edit members directly; this path exists because paddlers
+   * cannot — the backend enforces the column list.
+   */
+  updateMyContact(contact: OwnContact): Promise<void>;
 }

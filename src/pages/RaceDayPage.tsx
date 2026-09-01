@@ -1,6 +1,7 @@
 import { Plus, Trash2, Trophy } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useCanManage } from '@/auth/session';
 import { AdvanceDialog } from '@/components/races/AdvanceDialog';
 import { BackLink } from '@/components/ui/BackLink';
 import { Button } from '@/components/ui/Button';
@@ -82,6 +83,7 @@ export function RaceDayPage() {
 }
 
 function CategoryResults({ category }: { category: Category }) {
+  const canManage = useCanManage();
   const crews = useCrews(category.id);
   const allEntries = useAllRaceEntries();
   const createEntries = useCreateRaceEntries();
@@ -126,7 +128,7 @@ function CategoryResults({ category }: { category: Category }) {
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{categoryName(category)}</h2>
-        {crewList.length > 0 && (
+        {canManage && crewList.length > 0 && (
           <div className="flex flex-wrap gap-2">
             <AdvanceDialog
               entries={entries}
@@ -181,6 +183,7 @@ function RaceGroup({
   crews: Crew[];
   raceCounts: Record<RaceStage, number>;
 }) {
+  const readOnly = !useCanManage();
   const crewName = (id: string) => crews.find((c) => c.id === id)?.name ?? 'Unknown crew';
   const { stage, heat } = group[0].entry;
 
@@ -198,14 +201,27 @@ function RaceGroup({
       </div>
       <ul className="divide-y divide-[var(--border-subtle)]">
         {sorted.map((item) => (
-          <ResultRow key={item.entry.id} item={item} crewName={crewName(item.entry.crewId)} />
+          <ResultRow
+            key={item.entry.id}
+            item={item}
+            crewName={crewName(item.entry.crewId)}
+            readOnly={readOnly}
+          />
         ))}
       </ul>
     </Card>
   );
 }
 
-function ResultRow({ item, crewName }: { item: RankedEntry; crewName: string }) {
+function ResultRow({
+  item,
+  crewName,
+  readOnly = false,
+}: {
+  item: RankedEntry;
+  crewName: string;
+  readOnly?: boolean;
+}) {
   const updateEntry = useUpdateRaceEntry();
   const deleteEntry = useDeleteRaceEntry();
   const { entry, placement, deltaMs } = item;
@@ -267,27 +283,35 @@ function ResultRow({ item, crewName }: { item: RankedEntry; crewName: string }) 
         {formatDelta(deltaMs)}
       </span>
 
-      <Input
-        className={cn('tabular h-9 w-28 shrink-0 text-right text-sm', invalid && 'border-red-600')}
-        placeholder="2:05.42"
-        inputMode="decimal"
-        aria-label={`Finish time for ${crewName}`}
-        aria-invalid={invalid}
-        value={draft}
-        onFocus={() => setEditing(true)}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-      />
+      {readOnly ? (
+        <span className="tabular w-28 shrink-0 text-right text-sm">
+          {entry.timeMs != null ? formatRaceTime(entry.timeMs) : '—'}
+        </span>
+      ) : (
+        <>
+          <Input
+            className={cn('tabular h-9 w-28 shrink-0 text-right text-sm', invalid && 'border-red-600')}
+            placeholder="2:05.42"
+            inputMode="decimal"
+            aria-label={`Finish time for ${crewName}`}
+            aria-invalid={invalid}
+            value={draft}
+            onFocus={() => setEditing(true)}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
 
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label={`Remove ${crewName} from this race`}
-        onClick={() => deleteEntry.mutate(entry.id)}
-      >
-        <Trash2 />
-      </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Remove ${crewName} from this race`}
+            onClick={() => deleteEntry.mutate(entry.id)}
+          >
+            <Trash2 />
+          </Button>
+        </>
+      )}
     </li>
   );
 }
