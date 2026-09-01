@@ -95,9 +95,15 @@ Three layers that do not leak into each other:
 the fill and seating logic, and the calendar as pure functions. It is where
 most of the tests are, and it is what would port unchanged to a native client.
 
-`src/data` defines repository interfaces and implements them. Today that is a
-localStorage adapter; adding Supabase means writing a second adapter and
-setting one environment variable, with no change to any screen.
+`src/data` defines repository interfaces and implements them twice: a
+localStorage adapter (the default — the app runs with no configuration) and a
+Supabase/Postgres adapter selected by setting `VITE_DATA_ADAPTER=supabase`,
+with no change to any screen. Both must pass the same behavioural contract
+(`src/data/adapterContract.ts`). The Supabase side is **staging-only for
+now** — the schema ships with temporary open access policies until sign-in
+lands — and does not write offline: the installed app still opens without a
+connection, but shows a banner and refuses edits until it returns. See
+`supabase/README.md` for the local stack and deployment workflow.
 
 Rules that vary between clubs and federations — the minimum number of women
 in a mixed crew, balance tolerances, the event types and training kinds
@@ -114,8 +120,8 @@ backup with the same care as the spreadsheet it replaces.
 
 ## Not built yet
 
-Sign-in and a shared database (Supabase, with admin/coach/paddler roles), so
-lineups sync across devices and paddlers record their own sign-ups — today a
-coach records them on everyone's behalf. Also lineup version history,
-fitness/erg test data, and offline editing — the app reads offline but needs
-a live page to write.
+Sign-in with admin/coach/paddler roles, so the shared database can hold real
+club data and paddlers can record their own sign-ups — today a coach records
+them on everyone's behalf. Also realtime sync between open devices, lineup
+version history, and offline editing — the app reads offline but needs a
+live page to write.

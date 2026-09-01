@@ -1,9 +1,9 @@
-import { BarChart3, CalendarDays, Dumbbell, LayoutDashboard, Settings, Users } from 'lucide-react';
-import { Suspense, type ReactNode } from 'react';
+import { BarChart3, CalendarDays, CloudOff, Dumbbell, LayoutDashboard, Settings, Users } from 'lucide-react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Spinner } from '@/components/ui/misc';
 import { Toaster } from '@/components/ui/Toaster';
-import { useExternalStorageSync, useStorageWarnings } from '@/queries/hooks';
+import { adapterName, useExternalStorageSync, useStorageWarnings } from '@/queries/hooks';
 import { cn } from '@/utils/cn';
 
 /**
@@ -38,6 +38,7 @@ export function AppShell() {
       </a>
       <Sidebar />
       <main id="main" className="min-w-0 flex-1 px-4 pb-24 pt-5 sm:px-8 sm:pb-10">
+        <OfflineBanner />
         {/* Pages are lazy chunks; the fallback shows while one is fetched. */}
         <Suspense fallback={<Spinner />}>
           <Outlet />
@@ -46,6 +47,35 @@ export function AppShell() {
       <BottomBar />
       <Toaster />
     </div>
+  );
+}
+
+/**
+ * Honest about the one thing the network backend cannot do: work offline.
+ * The PWA shell still loads; reads fail into their retry states and writes
+ * are refused — so say why, up front, rather than letting every action toast
+ * an inscrutable fetch error. The localStorage adapter never shows this: it
+ * has no network to lose.
+ */
+function OfflineBanner() {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, []);
+
+  if (adapterName !== 'supabase' || online) return null;
+  return (
+    <p className="no-print mb-4 flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+      <CloudOff className="size-4 shrink-0" />
+      No connection — changes can't be saved until you're back online.
+    </p>
   );
 }
 

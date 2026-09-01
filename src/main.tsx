@@ -16,9 +16,12 @@ const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      // Local storage reads are instant, and a stale seat map is dangerous —
-      // so refetch freely rather than serving cached lineups.
-      staleTime: 0,
+      // One minute, not zero: with a network backend, staleTime 0 plus
+      // focus-refetch re-reads roughly ten whole tables on every tab switch.
+      // Writes stay instantly fresh regardless — every mutation awaits its
+      // invalidations — and cross-tab changes invalidate explicitly, so the
+      // stale-seat-map danger this used to guard against is already covered.
+      staleTime: 60_000,
       retry: false,
       refetchOnWindowFocus: true,
     },
