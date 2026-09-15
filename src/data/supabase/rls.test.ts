@@ -145,6 +145,30 @@ if (url && serviceKey && anonKey) {
       expect(must(await anon.from('clubs').select('id'))).toHaveLength(0);
     });
 
+    it('an invite links a login that signed in BEFORE being invited', async () => {
+      // The trigger only fires on auth-user creation; the invite itself must
+      // connect an already-existing login, or early sign-ins stay stranded
+      // on the "Almost there" screen forever.
+      const earlyEmail = `rls-early-${run}@example.com`;
+      const early = createClient(url!, anonKey!, { auth: { persistSession: false } });
+      await makeUser(early, earlyEmail); // signs in first — no profile yet
+
+      must(
+        await admin.rpc('invite_member', {
+          p_club: clubId,
+          p_email: earlyEmail,
+          p_role: 'paddler',
+          p_member_id: null,
+        }),
+      );
+
+      // Linked without any further action on their side.
+      const directory = must(
+        await early.from('member_directory').select('id').eq('club_id', clubId),
+      ) as { id: string }[];
+      expect(directory).toHaveLength(2);
+    });
+
     it('staff still see everything, private fields included', async () => {
       const directory = must(
         await admin.from('member_directory').select('id, phone').eq('club_id', clubId),

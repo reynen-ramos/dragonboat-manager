@@ -27,8 +27,20 @@ const url = process.env.SUPABASE_TEST_URL;
 const key = process.env.SUPABASE_TEST_KEY;
 
 if (url && key) {
-  const adapter = createSupabaseAdapter({ url, anonKey: key });
-  describeAdapterContract('supabase', () => adapter, () => adapter.admin.clearAll());
+  // Pin the suite to its own club: without this the adapter grabs the OLDEST
+  // club, and each reset would wipe whatever the dev seeder built there.
+  const clubId = `contract-test-${Date.now()}`;
+  const adapter = createSupabaseAdapter({ url, anonKey: key, clubId });
+  describeAdapterContract(
+    'supabase',
+    () => adapter,
+    async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const service = createClient(url, key, { auth: { persistSession: false } });
+      await service.from('clubs').upsert({ id: clubId, name: 'Contract Test Club' });
+      await adapter.admin.clearAll();
+    },
+  );
 } else {
   describe('supabase adapter contract', () => {
     it.skip('set SUPABASE_TEST_URL and SUPABASE_TEST_KEY to run against a local stack', () => {});

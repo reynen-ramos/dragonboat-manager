@@ -40,6 +40,29 @@ VITE_SUPABASE_ANON_KEY=<anon key from `supabase status`>
 Local magic-link emails land in Mailpit (`http://127.0.0.1:54324`), not a real
 inbox.
 
+### Seeded demo logins
+
+```sh
+npm run seed:dev
+```
+
+creates three ready-made logins with a founded club holding the full demo
+season:
+
+| Login | Role |
+|---|---|
+| `admin@demo.local` | admin of "Demo Club" |
+| `coach@demo.local` | coach |
+| `paddler@demo.local` | paddler, linked to Maria Santos |
+
+All three share the password `demo-password` (override with
+`SEED_PASSWORD`) — password sign-in is for tooling; in the app they sign in
+by magic link like anyone else (fetch it from Mailpit). Rerunnable: users
+and invitations are kept, the club's data is replaced with a fresh demo
+season. It targets the local stack by default and refuses other URLs unless
+`SEED_ALLOW_REMOTE=1`, because known-password accounts don't belong on a
+real project.
+
 ### Test suites (both gated; skipped when the variables are unset)
 
 ```sh
