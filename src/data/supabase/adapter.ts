@@ -52,6 +52,8 @@ import { makeSupabaseRepo, unwrap } from './repo';
 export interface SupabaseConfig {
   url: string;
   anonKey: string;
+  /** Pins the adapter to one club instead of deriving it from the session. */
+  clubId?: string;
 }
 
 /** PostgREST caps request bodies; imports insert in slabs rather than one shot. */
@@ -101,6 +103,11 @@ export function createSupabaseAdapter(config: SupabaseConfig): DataAdapter {
   let clubPromise: Promise<string> | undefined;
   const clubId = (): Promise<string> => {
     clubPromise ??= (async () => {
+      // Tooling (the dev seeder, ops scripts) pins the club explicitly —
+      // a service-key client has no membership to derive one from, and
+      // "first club" would be a guess.
+      if (config.clubId) return config.clubId;
+
       const standing = await fetchStanding();
       if (standing) return standing.clubId;
 
